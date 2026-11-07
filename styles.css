@@ -15,6 +15,10 @@
   --ink-deep: 84, 60, 255;
 
   /* lights */
+  /* sunset lamp: red core, orange then pink further out */
+  --lamp-core: 255, 28, 18;
+  --lamp-orange: 255, 120, 30;
+  --lamp-pink: 255, 70, 150;
   --pink: 255, 70, 140;
   --rose: 236, 110, 160;
   --ember: 255, 72, 36;
@@ -45,7 +49,7 @@ html, body {
   perspective: 2200px;
   /* the room: warm-brown dark on the left where the light leaks, deep navy to the right */
   background:
-    radial-gradient(45% 55% at 22% 55%, rgba(60, 14, 10, 0.55), transparent 70%),
+    radial-gradient(55% 65% at 10% 52%, rgba(70, 12, 8, 0.6), transparent 75%),
     radial-gradient(50% 60% at 85% 60%, rgba(10, 14, 40, 0.6), transparent 70%),
     var(--bg);
 }
@@ -68,19 +72,47 @@ html, body {
   border-radius: 50%;
 }
 .spill--left {
-  /* red-pink light falling off the left edge (Figma: Ellipse 1) */
-  width: calc(var(--page-w) * 0.95);
-  height: calc(var(--page-w) * 1.45);
-  left: calc(50% - var(--page-w) * 1.55);
-  top: calc(50% - var(--page-w) * 0.62);
+  /* lamp light pooling on the table between the lamp and the book */
+  width: calc(var(--page-w) * 1.6);
+  height: calc(var(--page-w) * 1.9);
+  left: calc(50% - var(--page-w) * 2.15);
+  top: calc(50% - var(--page-w) * 0.85);
   background: radial-gradient(closest-side,
-    rgba(var(--ember), 0.42),
-    rgba(var(--pink), 0.22) 35%,
-    rgba(var(--pink), 0.08) 65%,
-    rgba(var(--pink), 0.02) 85%,
+    rgba(var(--lamp-core), 0.45),
+    rgba(var(--lamp-orange), 0.25) 40%,
+    rgba(var(--lamp-pink), 0.12) 68%,
     transparent);
-  filter: blur(28px);
+  filter: blur(30px);
+  mix-blend-mode: screen;
   animation: breathe 9s ease-in-out infinite;
+}
+
+/* the lamp: hot red core just off-screen left, blooming out to orange and pink */
+.lamp {
+  position: absolute;
+  pointer-events: none;
+  left: -38vmax;
+  top: 50%;
+  width: 76vmax;
+  height: 76vmax;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side,
+    rgba(255, 225, 190, 1) 0%,
+    rgba(255, 90, 60, 1) 4%,
+    rgba(var(--lamp-core), 0.95) 10%,
+    rgba(245, 40, 25, 0.8) 17%,
+    rgba(255, 85, 35, 0.62) 25%,
+    rgba(var(--lamp-orange), 0.48) 33%,
+    rgba(255, 100, 110, 0.36) 42%,
+    rgba(var(--lamp-pink), 0.25) 52%,
+    rgba(var(--lamp-pink), 0.13) 64%,
+    rgba(var(--lamp-pink), 0.05) 78%,
+    rgba(var(--lamp-pink), 0.015) 90%,
+    transparent);
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  animation: lamp 6s ease-in-out infinite;
 }
 .spill--uv {
   /* the blacklight itself, somewhere above: a broad, faint violet wash */
@@ -198,11 +230,14 @@ html, body {
 }
 .page--left .page__light {
   background:
-    linear-gradient(90deg, transparent 84%, rgba(120, 70, 120, 0.55) 97%, rgba(60, 30, 70, 0.85)),
+    radial-gradient(110% 85% at -25% 54%, rgba(255, 70, 50, 0.75), rgba(255, 130, 90, 0.45) 40%, rgba(255, 150, 170, 0.2) 70%, transparent 95%),
+    linear-gradient(90deg, transparent 78%, rgba(110, 60, 110, 0.6) 95%, rgba(40, 15, 50, 0.92)),
     linear-gradient(180deg, transparent 70%, rgba(110, 70, 110, 0.45));
 }
 .page--right .page__light {
   background:
+    radial-gradient(45% 50% at 0% 47%, rgba(255, 80, 60, 0.55), rgba(255, 140, 130, 0.25) 50%, transparent 85%),
+    linear-gradient(90deg, transparent 20%, rgba(90, 70, 120, 0.35)),
     linear-gradient(90deg, rgba(60, 30, 70, 0.85), rgba(120, 70, 120, 0.5) 3%, transparent 14%),
     /* page stack falls into shadow on the right (Figma: Rectangle 7) */
     radial-gradient(22% 75% at 104% 50%, rgba(15, 5, 25, 0.98), rgba(40, 20, 50, 0.6) 55%, transparent 100%),
@@ -215,21 +250,33 @@ html, body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  mix-blend-mode: screen;
+  /* hard-light keeps the lamp colours saturated instead of washing them to white */
+  mix-blend-mode: hard-light;
   animation: breathe 9s ease-in-out infinite;
 }
 .page--left .page__paper::after {
   background:
-    /* red-orange burn along the outer edge */
-    linear-gradient(90deg, rgba(var(--ember), 1), rgba(var(--ember), 0.45) 2.5%, rgba(var(--ember), 0.12) 7%, transparent 13%),
-    /* pink light at the outer edge (Figma: left glow) */
-    radial-gradient(38% 30% at 0% 54%, rgba(var(--pink), 0.7), rgba(var(--pink), 0.28) 45%, rgba(var(--pink), 0.08) 75%, transparent),
-    /* pink light pooling in the gutter (Figma: spine glow) */
-    radial-gradient(34% 36% at 100% 46%, rgba(var(--pink), 0.62), rgba(var(--pink), 0.24) 45%, rgba(var(--pink), 0.06) 78%, transparent);
+    /* the outer edge faces the lamp and burns red */
+    linear-gradient(90deg, rgba(var(--lamp-core), 1), rgba(var(--lamp-core), 0.55) 2.5%, rgba(var(--lamp-orange), 0.2) 7%, transparent 13%),
+    /* the lamp's falloff across the page: red, then orange, then pink, fading toward the spine */
+    radial-gradient(100% 80% at -30% 54%,
+      rgba(var(--lamp-core), 1),
+      rgba(var(--lamp-core), 0.7) 22%,
+      rgba(var(--lamp-orange), 0.55) 42%,
+      rgba(var(--lamp-pink), 0.35) 64%,
+      rgba(var(--lamp-pink), 0.12) 86%,
+      transparent);
 }
 .page--right .page__paper::after {
   background:
-    radial-gradient(34% 36% at 0% 46%, rgba(var(--pink), 0.62), rgba(var(--pink), 0.24) 45%, rgba(var(--pink), 0.06) 78%, transparent);
+    /* the right page curves up out of the gutter, so its inner edge faces the lamp and catches it */
+    radial-gradient(42% 48% at 0% 47%,
+      rgba(var(--lamp-core), 0.9),
+      rgba(var(--lamp-orange), 0.5) 35%,
+      rgba(var(--lamp-pink), 0.18) 65%,
+      transparent),
+    /* weaker spill reaching across from the left */
+    linear-gradient(90deg, rgba(var(--lamp-pink), 0.22), rgba(var(--lamp-orange), 0.06) 60%, transparent);
 }
 
 /* ---------- fluorescent ink ---------- */
@@ -356,6 +403,10 @@ html, body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.86; }
 }
+@keyframes lamp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
 @keyframes ink-flicker {
   0%, 100% { opacity: 1; }
   41% { opacity: 0.95; }
@@ -378,7 +429,7 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   :root { --flip-ms: 1ms; }
-  .spill--left, .page__paper::after, .page__text, .page__hint { animation: none; }
+  .lamp, .spill--left, .page__paper::after, .page__text, .page__hint { animation: none; }
 }
 
 @media (max-aspect-ratio: 3/4) {
