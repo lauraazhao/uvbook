@@ -674,15 +674,18 @@ document.addEventListener("keydown", (e) => {
 // ---------------------------------------------------------------------------
 function wingTexture() {
   // canvas: wing root along the left edge (the body), front of the butterfly
-  // at the top; tall and slender, with long forewings sweeping up and long
-  // hindwings tapering down
-  const Wc = 256, Hc = 512;
+  // at the top. Monarch-like: a big rounded forewing, wider than it is tall,
+  // its outer edge angled up and out to the tip, and a smaller round hindwing
+  const Wc = 256, Hc = 256;
   const crisp = document.createElement("canvas");
   crisp.width = Wc; crisp.height = Hc;
   const g = crisp.getContext("2d");
-  const fore = new Path2D("M4,238 C30,150 104,44 204,16 C244,6 254,56 240,110 C222,172 140,226 6,254 Z");
-  const hind = new Path2D("M6,262 C90,266 168,300 196,352 C224,404 204,472 154,492 C112,508 64,444 34,384 C16,344 8,304 6,270 Z");
-  const glow = g.createRadialGradient(10, 256, 2, 10, 256, 300);
+  // keep the wing clear of the canvas edges (except the root) so the blur
+  // and halo can fade out fully instead of being cut off
+  g.setTransform(0.8, 0, 0, 0.8, 0, 26);
+  const fore = new Path2D("M4,122 C30,78 108,18 196,4 C228,-1 240,18 236,42 C230,80 216,110 198,128 C140,137 70,135 6,130 Z");
+  const hind = new Path2D("M6,138 C62,140 132,146 162,172 C188,196 172,236 130,244 C90,250 40,214 6,160 Z");
+  const glow = g.createRadialGradient(8, 132, 2, 8, 132, 250);
   glow.addColorStop(0, "#fffbe8");
   glow.addColorStop(0.14, "#ffe88a");
   glow.addColorStop(0.42, "#ffc02a");
@@ -694,12 +697,12 @@ function wingTexture() {
   // faint veins fanning out from the body
   g.strokeStyle = "rgba(210,100,0,0.45)";
   g.lineWidth = 2;
-  for (const [x, y] of [[200, 20], [238, 90], [196, 170], [120, 236], [190, 340], [176, 450], [100, 440], [50, 380]]) {
+  for (const [x, y] of [[196, 6], [234, 40], [214, 108], [140, 132], [160, 180], [130, 244], [60, 222]]) {
     g.save();
-    g.clip(y < 258 ? fore : hind);
+    g.clip(y < 135 ? fore : hind);
     g.beginPath();
-    g.moveTo(4, 258);
-    g.quadraticCurveTo((4 + x) / 2, (258 + y) / 2 + (y < 258 ? 18 : -18), x, y);
+    g.moveTo(4, 134);
+    g.quadraticCurveTo((4 + x) / 2, (134 + y) / 2 + (y < 135 ? 12 : -12), x, y);
     g.stroke();
     g.restore();
   }
@@ -707,7 +710,7 @@ function wingTexture() {
   // up, which works in every browser) with a warm halo, then the detailed
   // wing over it at partial strength
   const small = document.createElement("canvas");
-  small.width = Wc / 6; small.height = Hc / 6;
+  small.width = Wc / 10; small.height = Hc / 10;
   const sg = small.getContext("2d");
   sg.imageSmoothingQuality = "high";
   sg.drawImage(crisp, 0, 0, small.width, small.height);
@@ -716,10 +719,10 @@ function wingTexture() {
   const o = out.getContext("2d");
   o.imageSmoothingQuality = "high";
   o.shadowColor = "rgba(255,170,40,0.9)";
-  o.shadowBlur = 28;
+  o.shadowBlur = 44;
   o.drawImage(small, 0, 0, Wc, Hc);
   o.shadowBlur = 0;
-  o.globalAlpha = 0.6;
+  o.globalAlpha = 0.32;
   o.drawImage(crisp, 0, 0);
   const t = new THREE.CanvasTexture(out);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -727,7 +730,7 @@ function wingTexture() {
 }
 
 const butterfly = new THREE.Group();
-const WING = 0.46;         // wing width; each wing is twice as long as it is wide
+const WING = 0.6;          // size of each wing's square
 const wingMat = new THREE.MeshBasicMaterial({
   map: wingTexture(),
   color: new THREE.Color(3.2, 2.2, 1.0), // over 1 so the wings bloom, kept warm and saturated
@@ -743,7 +746,7 @@ const wingDepth = new THREE.MeshDepthMaterial({
   side: THREE.DoubleSide,
 });
 function makeWing(sign) {
-  const geo = new THREE.PlaneGeometry(WING, WING * 2);
+  const geo = new THREE.PlaneGeometry(WING, WING);
   geo.rotateX(-Math.PI / 2);          // lie flat; texture top points forward (-z)
   geo.translate(WING / 2, 0, 0);       // root at the body
   if (sign < 0) geo.scale(-1, 1, 1);   // mirror for the left wing
@@ -759,7 +762,7 @@ function makeWing(sign) {
 const wingR = makeWing(1);
 const wingL = makeWing(-1);
 const body = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.02, 0.36, 4, 8),
+  new THREE.CapsuleGeometry(0.014, 0.3, 4, 8),
   new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.8, 2.0) }) // white-hot
 );
 body.rotation.x = Math.PI / 2;
@@ -845,4 +848,4 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, poseLeaf, turningPose, scene, camera, textures, debug };
+window.__uvbook = { turn, poseLeaf, turningPose, scene, camera, textures, debug, wingMat };
