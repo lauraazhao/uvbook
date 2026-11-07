@@ -16,8 +16,8 @@ const INDENT = FONT_SIZE * 1.4;
 
 // top-edge curves as [x, y] control points (two cubic segments each)
 const EDGE = {
-  left:  [[10, 36], [60, 26], [81, 0], [135, 0], [210, 0], [270, 9], [300, 46]],
-  right: [[0, 46], [30, 9], [90, 0], [165, 0], [219, 0], [240, 26], [290, 36]],
+  left:  [[10, 30], [60, 12], [105, 0], [150, 0], [200, 0], [260, 10], [300, 38]],
+  right: [[0, 38], [40, 10], [100, 0], [150, 0], [195, 0], [240, 12], [290, 30]],
 };
 // text column, in page units
 const COLUMN = { left: [38, 276], right: [24, 254] };
@@ -28,10 +28,18 @@ function measure(text, italic) {
   return measureCtx.measureText(text).width;
 }
 
+// A line starts flat at the left margin (so every line lines up, like print)
+// and bends only as it runs on: down into the gutter on the left page, and
+// down toward the outer edge on the right page, following the paper.
+const DROP = { left: 30, right: 20 };
 function linePath(side, base, bend) {
-  const p = EDGE[side].map(([x, y]) => [x, base + bend * y]);
-  const f = ([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`;
-  return `M${f(p[0])} C${f(p[1])} ${f(p[2])} ${f(p[3])} C${f(p[4])} ${f(p[5])} ${f(p[6])}`;
+  const [x0, x1] = COLUMN[side];
+  const w = x1 - x0;
+  const drop = bend * DROP[side];
+  const f = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
+  // a little past the column end so the last glyphs always have path under them
+  const xe = x1 + 12;
+  return `M${f(x0, base)} C${f(x0 + 0.5 * w, base)} ${f(x0 + 0.85 * w, base + 0.4 * drop)} ${f(xe, base + drop * 1.15)}`;
 }
 
 // arc-length position on a path where it reaches a given x
@@ -87,7 +95,7 @@ function layoutPage(paper) {
       const base = FIRST_BASE + lineIndex * LINE_H;
       if (base > LAST_BASE) return;
       const t = (base - FIRST_BASE) / (LAST_BASE - FIRST_BASE);
-      const bend = 0.12 + 0.86 * Math.pow(1 - t, 1.5);
+      const bend = 0.18 + 0.72 * Math.pow(1 - t, 1.2);
 
       const path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("id", `ln-${uid}-${lineIndex}`);
@@ -170,7 +178,7 @@ function layoutAll() {
 // ---------------------------------------------------------------------------
 const book = document.getElementById("book");
 const leaf = document.getElementById("leaf");
-const STRIPS = 14;
+const STRIPS = 32;
 let strips = [];
 
 function buildStrips() {
@@ -199,6 +207,15 @@ function buildStrips() {
       slice.style.width = `${STRIPS * 100}%`;
       const copy = source.cloneNode(true);
       copy.querySelector(".page__text")?.remove(); // keep one readable copy only
+      // this strip's lamp light and shadow, inside the clipped page so they
+      // follow the page outline, covering just this strip's slice of it
+      for (const cls of ["strip__glow", "strip__shade"]) {
+        const layer = document.createElement("div");
+        layer.className = cls;
+        layer.style.left = `${(slot * 100) / STRIPS}%`;
+        layer.style.width = `${100 / STRIPS}%`;
+        copy.append(layer);
+      }
       slice.append(copy);
       face.append(slice);
       strip.append(face);
@@ -232,23 +249,42 @@ let currentPose = new Array(STRIPS).fill(0);
 let flipped = false;
 let animating = false;
 
+// Lighting on the turning sheet, worked out at every strip edge so it can be
+// blended smoothly across each strip (no visible bands). The lamp is off to the
+// left: parts of the sheet swung over to the left sit in its light, parts still
+// out on the right fall away into shadow. Flat parts keep the normal page light.
+function edgeLight(pose) {
+  const n = pose.length;
+  const out = [];
+  let x = 0;                      // horizontal position, in page widths from the spine
+  for (let k = 0; k <= n; k++) {
+    const a = k === 0 ? pose[0] : k === n ? pose[n - 1] : (pose[k - 1] + pose[k]) / 2;
+    const lifted = clamp(Math.sin(rad(a)) * 1.6);              // 0 when lying flat
+    const near = clamp(0.78 - 0.8 * x);                          // 1 far left, 0 far right
+    out.push({
+      lit: (near * 0.85 * lifted).toFixed(3),
+      dark: ((1 - near) * 0.8 * lifted).toFixed(3),
+    });
+    if (k < n) x += Math.cos(rad(pose[k])) / n;
+  }
+  return out;
+}
+
 function applyPose(pose) {
   let prev = 0;
+  const light = edgeLight(pose);
   strips.forEach((strip, i) => {
-    const a = pose[i];
-    const th = rad(a);
-    const front = LAMP.x * Math.sin(th) + LAMP.z * Math.cos(th);
-    const back = -front;
     const s = strip.style;
-    s.setProperty("--hinge", (a - prev).toFixed(3));
-    s.setProperty("--front-dark", clamp(1 - front / REST).toFixed(3));
-    s.setProperty("--back-dark", clamp(1 - back / REST).toFixed(3));
-    s.setProperty("--back-glow", clamp((back - REST) / (1 - REST)).toFixed(3));
-    prev = a;
+    s.setProperty("--hinge", (pose[i] - prev).toFixed(3));
+    s.setProperty("--lit0", light[i].lit);
+    s.setProperty("--lit1", light[i + 1].lit);
+    s.setProperty("--dark0", light[i].dark);
+    s.setProperty("--dark1", light[i + 1].dark);
+    prev = pose[i];
   });
   // shadow on the pages below follows the middle of the sheet
-  const mid = rad(pose[Math.floor(STRIPS / 2)] ?? 0);
   const deg = pose[Math.floor(STRIPS / 2)] ?? 0;
+  const mid = rad(deg);
   book.style.setProperty("--under-shadow", (0.6 * Math.sin(mid)).toFixed(3));
   book.style.setProperty("--base-shadow", (deg > 90 ? 0.5 * Math.sin(mid) : 0).toFixed(3));
 }
@@ -281,6 +317,7 @@ function turn(toFlipped) {
   if (animating || flipped === toFlipped) return;
   animating = true;
   flipped = toFlipped;
+  book.classList.add("is-turning");
   book.classList.toggle("is-flipped", toFlipped);
   const dir = toFlipped ? 1 : -1;
   const target = toFlipped ? 180 : 0;
@@ -295,7 +332,7 @@ function turn(toFlipped) {
     else currentPose = new Array(STRIPS).fill(target);
     applyPose(currentPose);
     if (t < TURN + SETTLE) requestAnimationFrame(step);
-    else animating = false;
+    else { animating = false; book.classList.remove("is-turning"); }
   };
   requestAnimationFrame(step);
 }

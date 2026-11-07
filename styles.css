@@ -376,6 +376,17 @@ html, body {
   inset: 0;
   visibility: hidden;
 }
+/* at rest the leaf is drawn whole from these faces; the strips only exist while it turns */
+.leaf__back { transform: translateX(-100%); }
+.book:not(.is-turning):not(.is-flipped) .leaf__front,
+.book.is-flipped:not(.is-turning) .leaf__back { visibility: visible; }
+.leaf > .strip { display: none; }
+.book.is-turning .leaf > .strip { display: block; }
+/* the blurred halo is costly across many strips; drop it while the page is moving */
+.strip .ink-glow { display: none; }
+.strip .page__paper::after,
+.strip .ink-crisp { animation: none; }
+.strip .page__paper { background-image: none; }
 
 .strip {
   position: absolute;
@@ -412,22 +423,42 @@ html, body {
   pointer-events: none;
   opacity: 0;
 }
-/* front of the leaf turns away from the lamp as it lifts */
-.strip__front .page__dyn {
-  background: linear-gradient(90deg, rgba(40, 15, 55, 0.7), rgba(15, 5, 25, 0.95));
-  mix-blend-mode: multiply;
-  opacity: var(--front-dark, 0);
+/* the clones' own flip overlays are replaced by the per-strip light below */
+.strip .page__dyn { display: none; }
+
+/* light on the turning sheet: script.js gives each strip the lamp light and the
+   shadow at both of its edges, and the gradients blend between them */
+.strip__glow,
+.strip__shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
 }
-/* back of the leaf swings round to face the lamp: dark at first, then it catches
-   the full sunset colour before settling into the left-page light */
-.strip__back .page__dyn {
-  background:
-    radial-gradient(150% 110% at -40% 54%,
-      rgba(var(--lamp-core), 1), rgba(var(--lamp-orange), 0.75) 40%, rgba(var(--lamp-pink), 0.5) 75%, transparent);
+.strip__glow {
   mix-blend-mode: hard-light;
-  opacity: var(--back-glow, 0);
+  background: linear-gradient(90deg,
+    rgba(255, 70, 45, calc(var(--lit0) * 0.75)),
+    rgba(255, 70, 45, calc(var(--lit1) * 0.75)));
 }
-.strip__back .page__light { box-shadow: inset 0 0 0 999px rgba(15, 5, 25, calc(var(--back-dark, 0) * 0.9)); }
+.strip__shade {
+  mix-blend-mode: multiply;
+  background: linear-gradient(90deg,
+    rgba(18, 6, 30, var(--dark0)),
+    rgba(18, 6, 30, var(--dark1)));
+}
+/* the back face is mirrored, so its gradients run the other way */
+.strip__back .strip__glow {
+  background: linear-gradient(90deg,
+    rgba(255, 70, 45, calc(var(--lit1) * 0.75)),
+    rgba(255, 70, 45, calc(var(--lit0) * 0.75)));
+}
+.strip__back .strip__shade {
+  background: linear-gradient(90deg,
+    rgba(18, 6, 30, var(--dark1)),
+    rgba(18, 6, 30, var(--dark0)));
+}
 /* shadow the lifted leaf throws on the pages under it */
 .page--under .page__dyn {
   background: linear-gradient(90deg, rgba(10, 0, 20, 0.95), rgba(10, 0, 20, 0.45) 60%, rgba(10, 0, 20, 0.1));
