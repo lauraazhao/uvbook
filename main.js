@@ -528,54 +528,65 @@ function paintAll() {
 
 const mirrored = REST.map((a) => 180 - a);
 
-// static left page (120) and the page under the leaf (123)
-const leftGeo = makeSheet();
-shapeSheet(leftGeo, mirrored, 0, true);
-const leftPage = new THREE.Mesh(leftGeo, pageMaterial(textures[120].color, textures[120].glow, THREE.DoubleSide));
+// Every page is a double-sided sheet whose front face shows one page and whose
+// back face shows the other side of that leaf; a small shader tweak picks the
+// texture by which face is in view. The left page is built exactly like the
+// turning leaf lying at 180, so a page that has just been turned is lit and
+// shadowed exactly like the one it now covers, and nothing is ever swapped.
+function sheetMaterial(frontN, backN) {
+  const m = pageMaterial(textures[frontN].color, textures[frontN].glow, THREE.DoubleSide);
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.mapBack = { value: textures[backN].color };
+    shader.uniforms.emissiveBack = { value: textures[backN].glow };
+    shader.fragmentShader = shader.fragmentShader
+      .replace("void main() {", "uniform sampler2D mapBack;\nuniform sampler2D emissiveBack;\nvoid main() {")
+      .replace(
+        "#include <map_fragment>",
+        `vec4 sampledDiffuseColor = gl_FrontFacing
+          ? texture2D( map, vMapUv )
+          : texture2D( mapBack, vec2( 1.0 - vMapUv.x, vMapUv.y ) );
+        diffuseColor *= sampledDiffuseColor;`
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        `vec4 emissiveColor = gl_FrontFacing
+          ? texture2D( emissiveMap, vEmissiveMapUv )
+          : texture2D( emissiveBack, vec2( 1.0 - vEmissiveMapUv.x, vEmissiveMapUv.y ) );
+        totalEmissiveRadiance *= emissiveColor.rgb;`
+      );
+  };
+  return m;
+}
+function makeSheetMesh(frontN, backN) {
+  const mesh = new THREE.Mesh(makeSheet(), sheetMaterial(frontN, backN));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  // the shadow outline is a right page's (front, unflipped); 121 serves for all
+  mesh.customDepthMaterial = depthMaterial(textures[121].color);
+  scene.add(mesh);
+  return mesh;
+}
+
+// left page (back face 120 up), the page under the leaf (123), and the leaf
+const leftPage = makeSheetMesh(121, 120);
+shapeSheet(leftPage.geometry, mirrored, 0, false);
 const underGeo = makeSheet();
 shapeSheet(underGeo, REST, 0, false);
 const underPage = new THREE.Mesh(underGeo, pageMaterial(textures[123].color, textures[123].glow, THREE.DoubleSide));
-for (const m of [leftPage, underPage]) { m.receiveShadow = true; m.castShadow = true; scene.add(m); }
-leftPage.customDepthMaterial = depthMaterial(textures[120].color);
+underPage.receiveShadow = true;
+underPage.castShadow = true;
 underPage.customDepthMaterial = depthMaterial(textures[123].color);
+scene.add(underPage);
 
-// the turning leaf: front (121) and back (122) share one bending shape
-const leafFrontGeo = makeSheet();
-const leafBackGeo = makeSheet();
-const leafFront = new THREE.Mesh(leafFrontGeo, pageMaterial(textures[121].color, textures[121].glow, THREE.FrontSide));
-const leafBack = new THREE.Mesh(leafBackGeo, pageMaterial(textures[122].color, textures[122].glow, THREE.BackSide));
-// the leaf casts shadows on the pages but doesn't receive them: its two faces
-// share one surface, and each would otherwise shadow the other
-for (const m of [leafFront, leafBack]) { m.castShadow = true; m.receiveShadow = false; scene.add(m); }
-leafFront.customDepthMaterial = depthMaterial(textures[121].color);
-leafBack.customDepthMaterial = depthMaterial(textures[122].color);
-
-// At rest the leaf is hidden and the open spread is drawn on the two static
-// pages, so every resting spread gets exactly the same lighting and shadows
-// and only the text differs. The leaf only appears while a page is turning.
-function showPages(left, right) {
-  for (const [mesh, n] of [[leftPage, left], [underPage, right]]) {
-    mesh.material.map = textures[n].color;
-    mesh.material.emissiveMap = textures[n].glow;
-    mesh.customDepthMaterial.map = textures[n].color;
-  }
-}
-function setResting(isFlipped) {
-  leafFront.visible = leafBack.visible = false;
-  showPages(isFlipped ? 122 : 120, isFlipped ? 123 : 121);
-}
-function setTurning() {
-  leafFront.visible = leafBack.visible = true;
-  showPages(120, 123);
-}
+const leaf = makeSheetMesh(121, 122);
+const leafGeo = leaf.geometry;
 
 const LEAF_LIFT = 0.006;  // sits just above the page beneath it
 function poseLeaf(turn) {
   // turn[i] is how far segment i has swung (0..180); blend the resting curve
   // so it lies like a right page at 0 and like a left page at 180
   const angles = turn.map((a, i) => a + REST[i] * (1 - (2 * a) / 180));
-  shapeSheet(leafFrontGeo, angles, LEAF_LIFT, false);
-  shapeSheet(leafBackGeo, angles, LEAF_LIFT, true);
+  shapeSheet(leafGeo, angles, LEAF_LIFT, false);
 }
 
 // ---------------------------------------------------------------------------
@@ -617,14 +628,12 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let flipped = false;
 let anim = null;
 poseLeaf(new Array(SEG).fill(0));
-setResting(false);
 
 function turn(toFlipped) {
   if (anim || flipped === toFlipped) return;
   flipped = toFlipped;
   anim = { t0: performance.now(), dir: toFlipped ? 1 : -1, target: toFlipped ? 180 : 0 };
-  poseLeaf(new Array(SEG).fill(toFlipped ? 0 : 180));
-  setTurning();
+
 }
 
 function stepTurn(now) {
@@ -637,7 +646,6 @@ function stepTurn(now) {
   else if (t < TURN + SETTLE) pose = settlePose(t - TURN, anim.target, SETTLE);
   else { pose = new Array(SEG).fill(anim.target); anim = null; }
   poseLeaf(pose);
-  if (!anim) setResting(flipped);
 }
 
 host.addEventListener("click", (e) => {
@@ -697,4 +705,4 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, poseLeaf, turningPose, setTurning, setResting, scene, camera };
+window.__uvbook = { turn, poseLeaf, turningPose, scene, camera };
