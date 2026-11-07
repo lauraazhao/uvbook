@@ -382,7 +382,7 @@ scene.add(rim);
 // paper in rings like light through a prism: purple at the core, then pink,
 // fading to yellow-green, then thin blue rings, then on through the rest of
 // the spectrum before it fades out.
-const NEON = new THREE.Vector3(-5.4, 2.4, 4.6);
+const NEON = new THREE.Vector3(-6.2, 6.0, 5.4);
 function neonRings() {
   const c = document.createElement("canvas");
   c.width = c.height = 512;
@@ -405,9 +405,9 @@ function neonRings() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-const neon = new THREE.SpotLight(0xffffff, 320, 0, 0.36, 0.05, 2);
+const neon = new THREE.SpotLight(0xffffff, 2200, 0, 0.98, 0.05, 2);
 neon.position.copy(NEON);
-neon.target.position.set(-1.5, 0.3, 0.9);
+neon.target.position.set(-6.6, 0, 5.8);
 neon.map = neonRings();
 neon.castShadow = true; // three only projects a light map when shadows are on
 neon.shadow.mapSize.set(1024, 1024);
