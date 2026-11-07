@@ -313,7 +313,7 @@ const VIEW_DIR = new THREE.Vector3(0, 0.95, 0.33).normalize();
 // table: almost black, catches the lamp's colour as it falls off
 const table = new THREE.Mesh(
   new THREE.PlaneGeometry(80, 80),
-  new THREE.MeshStandardMaterial({ color: 0x1c1416, roughness: 0.9, metalness: 0 })
+  new THREE.MeshStandardMaterial({ color: 0x2c2230, roughness: 0.72, metalness: 0 })
 );
 table.rotation.x = -Math.PI / 2;
 table.receiveShadow = true;
@@ -391,8 +391,8 @@ function neonRings() {
   g.fillRect(0, 0, 512, 512);
   const r = g.createRadialGradient(256, 256, 0, 256, 256, 256);
   [
-    [0.0, "#8a24ff"], [0.16, "#a92cff"], [0.3, "#e23bd8"], [0.42, "#ff4fa0"],
-    [0.53, "#ffc46a"], [0.61, "#d9f56a"], [0.66, "#9cf07a"],
+    [0.0, "#9a00ff"], [0.16, "#b800ff"], [0.3, "#f01ee0"], [0.42, "#ff2a9a"],
+    [0.53, "#ffb04a"], [0.61, "#e2ff4a"], [0.66, "#8cff6a"],
     // tight outer rings: baby-blue bands, then a thin run through the rest
     // of the spectrum, then dark
     [0.675, "#6cc8ff"], [0.684, "#b8e8ff"], [0.693, "#6cc8ff"], [0.702, "#b8e8ff"],
@@ -407,7 +407,7 @@ function neonRings() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-const neon = new THREE.SpotLight(0xffffff, 620, 0, 1.12, 0.05, 2);
+const neon = new THREE.SpotLight(0xffffff, 820, 0, 1.12, 0.05, 2);
 neon.position.copy(NEON);
 neon.target.position.set(-5.9, 0, 4.9);
 neon.map = neonRings();

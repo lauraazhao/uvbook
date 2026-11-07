@@ -27,6 +27,22 @@ html, body {
   width: 100%;
   height: 100%;
 }
+/* the neon's glow hanging in the air: a soft violet-pink haze that spills in
+   from the bottom-left corner over the dark space around the book */
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 75% 85% at -6% 108%,
+      rgba(176, 40, 255, 0.55) 0%,
+      rgba(236, 50, 210, 0.36) 28%,
+      rgba(255, 70, 150, 0.16) 52%,
+      rgba(255, 150, 90, 0.05) 70%,
+      rgba(0, 0, 0, 0) 85%);
+}
 .scene:focus-visible { outline: 2px solid #8470ff; outline-offset: -4px; }
 
 .fallback {
