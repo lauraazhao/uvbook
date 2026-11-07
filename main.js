@@ -668,6 +668,111 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------------------
+// A glowing butterfly: a small 3D object that flies loops across the scene,
+// flapping its wings. The wings are lit from within (white-hot at the root,
+// gold, then amber at the edge, strong enough to bloom) and it carries a warm
+// little light that it casts on the pages and table as it passes.
+// ---------------------------------------------------------------------------
+function wingTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  // canvas: wing root at the left middle, the front of the butterfly at the top
+  const fore = new Path2D("M6,120 C40,70 120,18 214,14 C246,13 250,52 236,84 C214,124 120,134 10,134 Z");
+  const hind = new Path2D("M8,138 C70,136 150,150 178,182 C200,208 172,246 128,240 C80,234 34,196 8,152 Z");
+  const glow = g.createRadialGradient(18, 132, 2, 18, 132, 240);
+  glow.addColorStop(0, "#fffbe0");
+  glow.addColorStop(0.12, "#ffe680");
+  glow.addColorStop(0.4, "#ffbe1a");
+  glow.addColorStop(0.75, "#ff8a00");
+  glow.addColorStop(1, "#e05a00");
+  g.fillStyle = glow;
+  g.fill(fore);
+  g.fill(hind);
+  // fine veins, slightly deeper gold
+  g.strokeStyle = "rgba(200,90,0,0.7)";
+  g.lineWidth = 1.6;
+  for (const [x, y] of [[214, 16], [236, 60], [200, 110], [150, 130], [176, 186], [140, 236], [80, 214]]) {
+    g.beginPath();
+    g.moveTo(10, 136);
+    g.quadraticCurveTo((10 + x) / 2, (136 + y) / 2 + (y < 136 ? 10 : -10), x, y);
+    g.save();
+    g.clip(y < 137 ? fore : hind);
+    g.stroke();
+    g.restore();
+  }
+  // a soft amber rim
+  g.lineWidth = 3;
+  g.strokeStyle = "rgba(220,90,0,0.95)";
+  g.stroke(fore);
+  g.stroke(hind);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+const butterfly = new THREE.Group();
+const WING = 0.52;
+const wingMat = new THREE.MeshBasicMaterial({
+  map: wingTexture(),
+  color: new THREE.Color(3.2, 2.2, 1.0), // over 1 so the wings bloom, kept warm and saturated
+  transparent: true,
+  alphaTest: 0.05,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+});
+function makeWing(sign) {
+  const geo = new THREE.PlaneGeometry(WING, WING);
+  geo.rotateX(-Math.PI / 2);          // lie flat; texture top points forward (-z)
+  geo.translate(WING / 2, 0, 0);       // root at the body
+  if (sign < 0) geo.scale(-1, 1, 1);   // mirror for the left wing
+  const pivot = new THREE.Group();
+  pivot.add(new THREE.Mesh(geo, wingMat));
+  butterfly.add(pivot);
+  return pivot;
+}
+const wingR = makeWing(1);
+const wingL = makeWing(-1);
+const body = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.022, 0.21, 4, 8),
+  new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, 0.9) })
+);
+body.rotation.x = Math.PI / 2;
+butterfly.add(body);
+const butterflyLight = new THREE.PointLight(0xffb446, 3, 3.6, 2);
+butterfly.add(butterflyLight);
+scene.add(butterfly);
+
+// flight: a long, looping figure-of-eight over and around the book
+function flightPos(t, out) {
+  return out.set(
+    4.3 * Math.sin(t * 0.21),
+    1.25 + 0.4 * Math.sin(t * 0.83) + 0.25 * Math.sin(t * 0.37),
+    0.55 + 1.5 * Math.sin(t * 0.42 + 0.6)
+  );
+}
+const fpA = new THREE.Vector3(), fpB = new THREE.Vector3();
+const debug = { flightTime: null }; // set to pin the butterfly in place for testing
+function stepButterfly(now) {
+  const still = reduceMotion.matches;
+  const t = still ? 7 : (debug.flightTime ?? now / 1000);
+  flightPos(t, fpA);
+  flightPos(t + 0.05, fpB);
+  butterfly.position.copy(fpA);
+  // face the way it's flying, tipping a little into turns and climbs
+  const dir = fpB.sub(fpA);
+  butterfly.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0, "YXZ");
+  butterfly.rotation.x = THREE.MathUtils.clamp(dir.y * 6, -0.35, 0.35);
+  // flap: quick downstrokes, wings never quite closing; gentle bob in time
+  const phase = still ? 0.6 : t * 11;
+  const flap = 0.15 + 1.0 * (0.5 + 0.5 * Math.sin(phase));
+  wingR.rotation.z = flap;
+  wingL.rotation.z = -flap;
+  butterfly.position.y += 0.03 * Math.cos(phase);
+  butterflyLight.intensity = 3 * (0.9 + 0.1 * Math.sin(phase));
+}
+
+// ---------------------------------------------------------------------------
 // Rendering: bloom makes the fluorescent ink and the lamp light glow
 // ---------------------------------------------------------------------------
 const composer = new EffectComposer(renderer);
@@ -695,6 +800,7 @@ resize();
 const base = { core: core.intensity, orange: orange.intensity, magenta: magenta.intensity };
 function frame(now) {
   stepTurn(now);
+  stepButterfly(now);
   // the lamp breathes very slightly
   const b = 1 + 0.035 * Math.sin(now / 1400) + 0.015 * Math.sin(now / 370);
   core.intensity = base.core * b;
@@ -712,4 +818,4 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, poseLeaf, turningPose, scene, camera, textures };
+window.__uvbook = { turn, poseLeaf, turningPose, scene, camera, textures, debug };
