@@ -1,0 +1,304 @@
+:root {
+  --bg: #000;
+  /* paper under blacklight: pale, slightly violet */
+  --paper: #cdbccf;
+  --paper-uv: #a991bd;
+  /* fluorescent ink */
+  --ink: #4f6bff;
+  --ink-core: #6f88ff;
+  --ink-glow: rgba(70, 100, 255, 0.55);
+  /* colored lights */
+  --magenta: 233, 32, 108;
+  --violet: 120, 60, 255;
+  --amber: 255, 92, 40;
+
+  --page-w: min(29.2vw, 46vh, 420px);
+  --flip-ms: 1100ms;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: #fff;
+  overflow: hidden;
+}
+
+.scene {
+  position: relative;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  perspective: 2200px;
+}
+
+/* ---------- light spilling onto the surface around the book ---------- */
+.spill {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(18px);
+}
+.spill--left {
+  /* the pink glow that falls off the left edge of the book (Figma: Ellipse 1) */
+  width: calc(var(--page-w) * 0.86);
+  height: calc(var(--page-w) * 1.3);
+  left: calc(50% - var(--page-w) * 1.43);
+  top: calc(50% - var(--page-w) * 0.58);
+  background: radial-gradient(closest-side,
+    rgba(var(--magenta), 0.55),
+    rgba(var(--magenta), 0.22) 45%,
+    rgba(var(--magenta), 0.06) 75%,
+    transparent);
+  animation: breathe 7s ease-in-out infinite;
+}
+.spill--uv {
+  /* faint blacklight wash behind everything */
+  inset: -10%;
+  border-radius: 0;
+  filter: none;
+  background:
+    radial-gradient(60% 45% at 50% 42%, rgba(var(--violet), 0.10), transparent 70%),
+    radial-gradient(30% 30% at 82% 70%, rgba(40, 80, 255, 0.06), transparent 70%);
+}
+
+/* ---------- book ---------- */
+.book {
+  position: relative;
+  width: calc(var(--page-w) * 2);
+  aspect-ratio: 600 / 445;
+  transform-style: preserve-3d;
+  transform: rotateX(8deg);
+  cursor: pointer;
+}
+
+.book__shadow {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: -5%;
+  height: 10%;
+  background: radial-gradient(closest-side, rgba(90, 40, 200, 0.35), transparent);
+  filter: blur(10px);
+}
+
+/* the stack of pages peeking out under each side */
+.book__block {
+  position: absolute;
+  bottom: -1.6%;
+  height: 4%;
+  width: 50%;
+  background: repeating-linear-gradient(180deg,
+    #b8a9c9 0 1px, #7f6f9a 1px 2px);
+  box-shadow: 0 0 10px rgba(var(--violet), 0.4);
+}
+.book__block--left {
+  left: -0.6%;
+  border-radius: 0 0 0 6px;
+  box-shadow: -6px 0 16px rgba(var(--amber), 0.55), 0 0 10px rgba(var(--violet), 0.4);
+}
+.book__block--right {
+  right: -0.6%;
+  border-radius: 0 0 6px 0;
+}
+
+/* ---------- pages ---------- */
+.page,
+.leaf {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+}
+.page--left { left: 0; }
+.page--right { left: 50%; }
+.leaf { left: 50%; }
+
+.page__paper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  container-type: inline-size;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), transparent 30%),
+    radial-gradient(120% 90% at 50% 40%, var(--paper), var(--paper-uv));
+}
+.page--left .page__paper { clip-path: url(#clip-left); }
+.page--right .page__paper { clip-path: url(#clip-right); }
+
+/* lighting is painted over the paper and text so the glows tint everything */
+.page__light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.page--left .page__light {
+  background:
+    radial-gradient(28% 34% at 0% 52%, rgba(var(--magenta), 0.95), rgba(var(--magenta), 0.35) 50%, transparent 100%),
+    radial-gradient(30% 42% at 100% 45%, rgba(var(--magenta), 0.95), rgba(var(--magenta), 0.35) 50%, transparent 100%),
+    linear-gradient(90deg, transparent 80%, rgba(60, 20, 90, 0.18));
+}
+.page--right .page__light {
+  background:
+    radial-gradient(30% 42% at 0% 45%, rgba(var(--magenta), 0.95), rgba(var(--magenta), 0.35) 50%, transparent 100%),
+    radial-gradient(18% 70% at 103% 48%, rgba(10, 0, 20, 0.95), rgba(30, 10, 40, 0.55) 55%, transparent 100%),
+    linear-gradient(270deg, rgba(20, 0, 30, 0.35), transparent 12%);
+}
+/* a brighter additive bloom on top of the multiply tint */
+.page__paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: breathe 7s ease-in-out infinite;
+}
+.page--left .page__paper::after {
+  background:
+    radial-gradient(14% 20% at 0% 52%, rgba(var(--magenta), 0.55), transparent),
+    radial-gradient(12% 22% at 100% 45%, rgba(var(--magenta), 0.5), transparent);
+}
+.page--right .page__paper::after {
+  background: radial-gradient(12% 22% at 0% 45%, rgba(var(--magenta), 0.5), transparent);
+}
+
+/* ---------- glowing UV text ---------- */
+.page__arc,
+.page__text,
+.page__num,
+.page__hint {
+  position: absolute;
+  font-family: "EB Garamond", Garamond, "Times New Roman", serif;
+  color: var(--ink);
+}
+
+.page__arc {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.page__arc text {
+  font-size: 11.2px; /* in the 300-unit viewBox ≈ 3.73cqw, matches body text */
+  fill: var(--ink-core);
+  filter: drop-shadow(0 0 0.4px rgba(180, 200, 255, 0.9)) drop-shadow(0 0 2px var(--ink-glow));
+  letter-spacing: 0.15px;
+}
+
+.page__text {
+  left: 9.3%;
+  right: 9.3%;
+  top: 23.5%;
+  bottom: 9%;
+  font-size: 3.73cqw;
+  font-weight: 500;
+  line-height: 1.42;
+  text-align: justify;
+  hyphens: auto;
+  color: var(--ink-core);
+  text-shadow:
+    0 0 1px rgba(180, 200, 255, 0.9),
+    0 0 3px var(--ink-glow),
+    0 0 9px rgba(70, 100, 255, 0.3);
+  animation: ink-flicker 5s steps(1) infinite;
+}
+.page--right .page__text { left: 6%; right: 12.6%; }
+.page--left .page__text { left: 11.6%; right: 7%; }
+
+.page__text p { margin: 0 0 0.55em; text-indent: 1.4em; }
+.page__text p:first-child { text-indent: 0; }
+
+.page__num {
+  bottom: 4.2%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 3.4cqw;
+  color: var(--ink-core);
+  text-shadow: 0 0 4px var(--ink-glow), 0 0 10px var(--ink-glow);
+}
+
+.page__hint {
+  right: 14%;
+  bottom: 4.2%;
+  font-size: 2.8cqw;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  color: var(--ink-core);
+  opacity: 0.75;
+  text-shadow: 0 0 6px var(--ink-glow);
+  animation: hint 2.6s ease-in-out infinite;
+}
+.book.is-flipped .page__hint { opacity: 0; animation: none; }
+
+/* ---------- the turning leaf ---------- */
+.leaf {
+  transform-origin: 0% 50%;
+  transform-style: preserve-3d;
+  transition: transform var(--flip-ms) cubic-bezier(0.55, 0.05, 0.3, 1);
+  z-index: 2;
+}
+.book.is-flipped .leaf { transform: rotateY(-180deg); }
+
+.leaf__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.leaf__back { transform: rotateY(180deg); }
+
+/* shading that sweeps across the leaf while it is in the air */
+.leaf__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: url(#clip-right);
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(var(--violet), 0.0), rgba(10, 0, 30, 0.55));
+  backface-visibility: hidden;
+}
+.book.is-turning .leaf__shade { animation: leaf-shade var(--flip-ms) ease-in-out; }
+
+/* page under the leaf darkens slightly while covered by the moving leaf */
+.page--under .page__paper { transition: filter var(--flip-ms) ease; }
+.book.is-turning .page--under .page__paper { animation: under-shade var(--flip-ms) ease-in-out; }
+
+.page--under { z-index: 1; }
+
+/* ---------- animations ---------- */
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+@keyframes ink-flicker {
+  0%, 100% { opacity: 1; }
+  41% { opacity: 0.94; }
+  42% { opacity: 1; }
+  77% { opacity: 0.97; }
+}
+@keyframes hint {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+@keyframes leaf-shade {
+  0% { opacity: 0; }
+  45% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes under-shade {
+  0% { filter: brightness(0.75); }
+  100% { filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --flip-ms: 1ms; }
+  .spill--left, .page__paper::after, .page__text, .page__hint { animation: none; }
+}
+
+@media (max-aspect-ratio: 3/4) {
+  :root { --page-w: 46vw; }
+}
