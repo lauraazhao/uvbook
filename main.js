@@ -400,8 +400,7 @@ function neonRings() {
     [0.53, "#ffb04a"], [0.61, "#e2ff4a"], [0.66, "#8cff6a"],
     // tight outer rings: baby-blue bands, then a thin run through the rest
     // of the spectrum, then dark
-    [0.675, "#6cc8ff"], [0.684, "#b8e8ff"], [0.693, "#6cc8ff"], [0.702, "#b8e8ff"],
-    [0.711, "#6cc8ff"], [0.724, "#b796ff"], [0.737, "#ff5cb4"], [0.75, "#ffa45e"],
+    [0.675, "#6cc8ff"], [0.688, "#b8e8ff"], [0.701, "#6cc8ff"], [0.716, "#b796ff"], [0.737, "#ff5cb4"], [0.75, "#ffa45e"],
     [0.77, "#4a1a4e"], [0.8, "#000000"], [1.0, "#000000"],
   ].forEach(([o, col]) => r.addColorStop(o, col));
   g.fillStyle = r;
@@ -721,13 +720,23 @@ const wingMat = new THREE.MeshBasicMaterial({
   depthWrite: false,
   side: THREE.DoubleSide,
 });
+const wingDepth = new THREE.MeshDepthMaterial({
+  depthPacking: THREE.RGBADepthPacking,
+  map: wingMat.map,
+  alphaTest: 0.05,
+  side: THREE.DoubleSide,
+});
 function makeWing(sign) {
   const geo = new THREE.PlaneGeometry(WING, WING);
   geo.rotateX(-Math.PI / 2);          // lie flat; texture top points forward (-z)
   geo.translate(WING / 2, 0, 0);       // root at the body
   if (sign < 0) geo.scale(-1, 1, 1);   // mirror for the left wing
   const pivot = new THREE.Group();
-  pivot.add(new THREE.Mesh(geo, wingMat));
+  const wing = new THREE.Mesh(geo, wingMat);
+  // the wings cast real, wing-shaped shadows from the lamp and the neon
+  wing.castShadow = true;
+  wing.customDepthMaterial = wingDepth;
+  pivot.add(wing);
   butterfly.add(pivot);
   return pivot;
 }
@@ -738,8 +747,10 @@ const body = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, 0.9) })
 );
 body.rotation.x = Math.PI / 2;
+body.castShadow = true;
 butterfly.add(body);
-const butterflyLight = new THREE.PointLight(0xffb446, 3, 3.6, 2);
+// its own glow lights everything around it, with a wide warm falloff
+const butterflyLight = new THREE.PointLight(0xffb446, 9, 6.5, 1.6);
 butterfly.add(butterflyLight);
 scene.add(butterfly);
 
@@ -769,7 +780,7 @@ function stepButterfly(now) {
   wingR.rotation.z = flap;
   wingL.rotation.z = -flap;
   butterfly.position.y += 0.03 * Math.cos(phase);
-  butterflyLight.intensity = 3 * (0.9 + 0.1 * Math.sin(phase));
+  butterflyLight.intensity = 9 * (0.9 + 0.1 * Math.sin(phase));
 }
 
 // ---------------------------------------------------------------------------
