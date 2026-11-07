@@ -91,10 +91,11 @@ html, body {
 .lamp {
   position: absolute;
   pointer-events: none;
-  left: -38vmax;
+  /* centre sits well off the left edge, so only the light reaches the screen */
+  left: calc(-65vmax - 22vw);
   top: 50%;
-  width: 76vmax;
-  height: 76vmax;
+  width: 130vmax;
+  height: 130vmax;
   transform: translateY(-50%);
   border-radius: 50%;
   background: radial-gradient(closest-side,
@@ -230,7 +231,7 @@ html, body {
 }
 .page--left .page__light {
   background:
-    radial-gradient(110% 85% at -25% 54%, rgba(255, 70, 50, 0.75), rgba(255, 130, 90, 0.45) 40%, rgba(255, 150, 170, 0.2) 70%, transparent 95%),
+    radial-gradient(170% 120% at -60% 54%, rgba(255, 70, 50, 0.75), rgba(255, 130, 90, 0.45) 40%, rgba(255, 150, 170, 0.2) 70%, transparent 95%),
     linear-gradient(90deg, transparent 78%, rgba(110, 60, 110, 0.6) 95%, rgba(40, 15, 50, 0.92)),
     linear-gradient(180deg, transparent 70%, rgba(110, 70, 110, 0.45));
 }
@@ -259,7 +260,7 @@ html, body {
     /* the outer edge faces the lamp and burns red */
     linear-gradient(90deg, rgba(var(--lamp-core), 1), rgba(var(--lamp-core), 0.55) 2.5%, rgba(var(--lamp-orange), 0.2) 7%, transparent 13%),
     /* the lamp's falloff across the page: red, then orange, then pink, fading toward the spine */
-    radial-gradient(100% 80% at -30% 54%,
+    radial-gradient(160% 115% at -60% 54%,
       rgba(var(--lamp-core), 1),
       rgba(var(--lamp-core), 0.7) 22%,
       rgba(var(--lamp-orange), 0.55) 42%,
