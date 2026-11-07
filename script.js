@@ -28,21 +28,26 @@ function measure(text, italic) {
   return measureCtx.measureText(text).width;
 }
 
-// Each line is a gentle arch, like print on a page that bows up off the table:
-// it starts on the shared left margin, rises a little through the middle and
-// comes back down at the end, dipping slightly more where it runs into the
-// gutter. Lines near the top bow the most; lower ones are almost straight.
-const ARCH = 7;                          // rise at the middle of the top line
-const END_DROP = { left: 5, right: 2.5 }; // extra fall at the line's end
+// How a printed line really bends on an open book: it stays straight across
+// the flat part of the page and only curves where the paper curves, rolling
+// down into the gutter at the spine. So on the left page a line runs level and
+// then dips at its end; on the right page it starts a little low by the spine,
+// climbs out of the gutter, then runs level with a faint fall at the outer edge.
+// Every line starts at the same x, so the left margin stays straight. Lines
+// near the top curve slightly more, where the paper lifts most.
 function linePath(side, base, bend) {
   const [x0, x1] = COLUMN[side];
   const w = x1 - x0;
-  const rise = ARCH * bend;
-  const drop = END_DROP[side] * bend;
-  const xe = x1 + 12; // run a little past the column so the last glyphs have path
-  const ye = base + drop + (drop + rise) * (12 / w);
+  const drop = 3.5 + 4.5 * bend;           // how far the line sinks into the gutter
   const f = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
-  return `M${f(x0, base)} C${f(x0 + w / 3, base - rise * 1.33)} ${f(x0 + (2 * w) / 3, base - rise * 1.33 + drop * 0.3)} ${f(x1, base + drop)} L${f(xe, ye)}`;
+  if (side === "left") {
+    return `M${f(x0, base)} L${f(x0 + 0.55 * w, base)} ` +
+      `C${f(x0 + 0.8 * w, base)} ${f(x1 - 0.04 * w, base + drop * 0.45)} ${f(x1, base + drop)} ` +
+      `L${f(x1 + 12, base + drop * 1.9)}`;
+  }
+  const edge = 1.2 * bend;                  // faint fall at the outer edge
+  return `M${f(x0, base + drop)} C${f(x0 + 0.06 * w, base + drop * 0.45)} ${f(x0 + 0.2 * w, base)} ${f(x0 + 0.42 * w, base)} ` +
+    `L${f(x0 + 0.7 * w, base)} Q${f(x0 + 0.9 * w, base)} ${f(x1, base + edge)} L${f(x1 + 12, base + edge * 1.6)}`;
 }
 
 // arc-length position on a path where it reaches a given x
