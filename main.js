@@ -550,6 +550,25 @@ for (const m of [leafFront, leafBack]) { m.castShadow = true; m.receiveShadow = 
 leafFront.customDepthMaterial = depthMaterial(textures[121].color);
 leafBack.customDepthMaterial = depthMaterial(textures[122].color);
 
+// At rest the leaf is hidden and the open spread is drawn on the two static
+// pages, so every resting spread gets exactly the same lighting and shadows
+// and only the text differs. The leaf only appears while a page is turning.
+function showPages(left, right) {
+  for (const [mesh, n] of [[leftPage, left], [underPage, right]]) {
+    mesh.material.map = textures[n].color;
+    mesh.material.emissiveMap = textures[n].glow;
+    mesh.customDepthMaterial.map = textures[n].color;
+  }
+}
+function setResting(isFlipped) {
+  leafFront.visible = leafBack.visible = false;
+  showPages(isFlipped ? 122 : 120, isFlipped ? 123 : 121);
+}
+function setTurning() {
+  leafFront.visible = leafBack.visible = true;
+  showPages(120, 123);
+}
+
 const LEAF_LIFT = 0.006;  // sits just above the page beneath it
 function poseLeaf(turn) {
   // turn[i] is how far segment i has swung (0..180); blend the resting curve
@@ -598,11 +617,14 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let flipped = false;
 let anim = null;
 poseLeaf(new Array(SEG).fill(0));
+setResting(false);
 
 function turn(toFlipped) {
   if (anim || flipped === toFlipped) return;
   flipped = toFlipped;
   anim = { t0: performance.now(), dir: toFlipped ? 1 : -1, target: toFlipped ? 180 : 0 };
+  poseLeaf(new Array(SEG).fill(toFlipped ? 0 : 180));
+  setTurning();
 }
 
 function stepTurn(now) {
@@ -615,6 +637,7 @@ function stepTurn(now) {
   else if (t < TURN + SETTLE) pose = settlePose(t - TURN, anim.target, SETTLE);
   else { pose = new Array(SEG).fill(anim.target); anim = null; }
   poseLeaf(pose);
+  if (!anim) setResting(flipped);
 }
 
 host.addEventListener("click", (e) => {
@@ -674,4 +697,4 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, poseLeaf, turningPose, scene, camera };
+window.__uvbook = { turn, poseLeaf, turningPose, setTurning, setResting, scene, camera };
