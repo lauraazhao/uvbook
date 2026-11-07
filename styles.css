@@ -13,7 +13,9 @@
   --ink-core: #e4dcff;
   --ink-mid: 132, 112, 255;
   /* colour-dodge source: strong blue, a little red/green so it lifts the paper */
-  --ink-dodge: 92, 78, 255;
+  --ink-dodge: 205, 195, 255;
+  /* softer, deeper dodge for the blurred glow layer */
+  --ink-bloom: 95, 75, 255;
   --ink-deep: 84, 60, 255;
 
   /* lights */
@@ -229,6 +231,8 @@ html, body {
   inset: 0;
   pointer-events: none;
   mix-blend-mode: multiply;
+  /* the room is dark: the paper sits a little dimmer than the glowing ink */
+  background-color: rgb(200, 186, 214);
 }
 .page--left .page__light {
   background:
@@ -313,12 +317,13 @@ html, body {
   mix-blend-mode: color-dodge;
   animation: ink-flicker 6s steps(1) infinite;
 }
-/* a faint halo, kept subtle */
+/* glow: a blurred colour-dodge copy of the letters, so the paper and lamp
+   light around each word brighten and saturate in their own colours */
 .ink-glow {
-  fill: rgb(var(--ink-mid));
-  opacity: 0.35;
-  filter: blur(1.6px);
-  mix-blend-mode: screen;
+  fill: rgb(var(--ink-bloom));
+  opacity: 0.7;
+  filter: blur(3px);
+  mix-blend-mode: color-dodge;
 }
 .ink-mark {
   /* centre the stroke on the x-height, not the baseline */
@@ -383,7 +388,7 @@ html, body {
 .leaf > .strip { display: none; }
 .book.is-turning .leaf > .strip { display: block; }
 /* the blurred halo is costly across many strips; drop it while the page is moving */
-.strip .ink-glow { display: none; }
+.strip .ink-glow { filter: none; opacity: 0.35; }
 .strip .page__paper::after,
 .strip .ink-crisp { animation: none; }
 .strip .page__paper { background-image: none; }
