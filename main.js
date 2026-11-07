@@ -393,9 +393,11 @@ function neonRings() {
   [
     [0.0, "#8a24ff"], [0.16, "#a92cff"], [0.3, "#e23bd8"], [0.42, "#ff4fa0"],
     [0.53, "#ffc46a"], [0.61, "#d9f56a"], [0.66, "#9cf07a"],
-    [0.69, "#2f6bff"], [0.71, "#8ff2c0"], [0.735, "#3a55ff"], [0.755, "#7fe6ff"],
-    [0.78, "#2a3cff"], [0.81, "#9a3cff"], [0.85, "#ff3c9a"], [0.89, "#ff8a3a"],
-    [0.93, "#5a1e60"], [1.0, "#000000"],
+    // tight outer rings: baby-blue bands, then a thin run through the rest
+    // of the spectrum, then dark
+    [0.675, "#6cc8ff"], [0.684, "#b8e8ff"], [0.693, "#6cc8ff"], [0.702, "#b8e8ff"],
+    [0.711, "#6cc8ff"], [0.724, "#b796ff"], [0.737, "#ff5cb4"], [0.75, "#ffa45e"],
+    [0.77, "#4a1a4e"], [0.8, "#000000"], [1.0, "#000000"],
   ].forEach(([o, col]) => r.addColorStop(o, col));
   g.fillStyle = r;
   g.beginPath();
