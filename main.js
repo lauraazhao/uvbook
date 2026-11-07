@@ -27,7 +27,9 @@ const EDGE = {
 
 // ---------------------------------------------------------------------------
 // Typesetting: a justified block with straight left and right margins, like a
-// printed page. Lines are drawn glyph by glyph along a path (flat here).
+// printed page. Each line bows gently with the page's curved top edge, but
+// only vertically: letters keep their place across the page and are sheared,
+// not rotated, so their upright strokes and both margins stay straight.
 // ---------------------------------------------------------------------------
 const FONT_SIZE = 11.2;
 const LINE_H = 16.4;
@@ -129,12 +131,14 @@ function layout(ctx, section) {
     while (wi < words.length) {
       const base = FIRST_BASE + lineIndex * LINE_H;
       if (base > LAST_BASE) return lines;
-      // lines are straight on the paper, so both margins are straight; the
-      // gentle curve you see comes from the 3D page itself bending
-      const poly = linePoly(side, base, 0);
+      // the curve is strongest near the top and relaxes down the page
+      const t = (base - FIRST_BASE) / (LAST_BASE - FIRST_BASE);
+      const bend = 0.06 + 0.16 * Math.pow(1 - t, 1.3);
+      const poly = linePoly(side, base, bend);
       const indent = first && pi > 0 ? INDENT : 0;
-      const start = lenAtX(poly, colStart) + indent;
-      const avail = lenAtX(poly, colEnd) - start;
+      // positions are measured straight across the page (x), not along the curve
+      const start = colStart + indent;
+      const avail = colEnd - start;
       const line = [];
       let width = 0;
       while (wi < words.length) {
@@ -167,10 +171,11 @@ function drawLines(ctx, lines, fill) {
         const ch = wd.w[i];
         const pre = ctx.measureText(wd.w.slice(0, i)).width;
         const cw = ctx.measureText(ch).width;
-        const p = atLen(poly, wd.at + pre + cw / 2);
+        const x = wd.at + pre + cw / 2;
+        const p = atLen(poly, lenAtX(poly, x));
         ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.angle);
+        ctx.translate(x, p.y);
+        ctx.transform(1, Math.tan(p.angle), 0, 1, 0, 0); // vertical shear only
         ctx.fillText(ch, 0, 0);
         ctx.restore();
       }
@@ -190,9 +195,9 @@ function drawMarks(ctx, lines, style, width, blur) {
       if (!run) return;
       ctx.beginPath();
       for (let L = run.a; L <= run.b; L += 1.5) {
-        const p = atLen(poly, L);
-        // centre the band on the x-height, perpendicular to the line
-        const px = p.x + Math.sin(p.angle) * 3.4, py = p.y - Math.cos(p.angle) * 3.4;
+        const p = atLen(poly, lenAtX(poly, L));
+        // centre the band on the x-height
+        const px = L, py = p.y - 3.4;
         L === run.a ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
       }
       ctx.stroke();
