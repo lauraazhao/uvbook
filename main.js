@@ -377,6 +377,24 @@ const rim = new THREE.PointLight(0x6a5cff, 52, 0, 2);
 rim.position.set(LAMP.x - 2.6, 6.2, LAMP.z + 1.4);
 scene.add(rim);
 
+// A second, neon light low at the bottom left. It's modelled as three nested
+// spotlights from one spot so the beam grades like a neon gradient: a narrow
+// violet-magenta core, a wider hot-pink band, and a soft peach-yellow outer
+// edge. Their penumbras overlap into a faint rainbow fringe on the paper.
+const NEON = new THREE.Vector3(-6.2, 0.55, 5.2);
+function neonBeam(color, intensity, angle, penumbra, aim) {
+  const l = new THREE.SpotLight(color, intensity, 0, angle, penumbra, 2);
+  l.position.copy(NEON);
+  l.target.position.set(aim[0], 0, aim[1]);
+  scene.add(l, l.target);
+  return l;
+}
+// each band aims a little further up the page, so the colours sit side by
+// side across the paper instead of mixing into one blob
+const neonCore = neonBeam(0xa21cff, 340, 0.16, 0.6, [-1.9, 1.7]);
+const neonPink = neonBeam(0xff1f9a, 280, 0.17, 0.65, [-1.15, 1.05]);
+const neonPeach = neonBeam(0xffbf70, 110, 0.19, 0.75, [-0.6, 0.7]);
+
 const uv = new THREE.HemisphereLight(0x7458ff, 0x05020a, 0.45);
 scene.add(uv);
 
