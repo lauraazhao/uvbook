@@ -347,31 +347,35 @@ sticker.position.set(-0.9, BLOCK_H / 2, H / 2 + 0.012);
 scene.add(sticker);
 
 // ---------------------------------------------------------------------------
-// Lights: one sunset lamp off-screen left. Its colours are modelled as three
-// emitters at the lamp: a low, close red core that falls off fast, an orange
-// band, and a high pink wash that reaches furthest. Plus the blacklight itself
-// as a faint violet fill from above.
+// Lights: one sunset lamp off-screen left, coloured like a real sunset-lamp
+// disc: a golden-yellow core that falls off fast, an orange band, a hot
+// magenta wash that reaches further, and a thin violet-blue rim furthest out.
+// Plus the blacklight itself as a faint violet fill from above.
 // ---------------------------------------------------------------------------
 const LAMP = new THREE.Vector3(-8, 1.5, 0.35);
 
-const red = new THREE.SpotLight(0xff2412, 300, 0, 0.7, 0.9, 2);
-red.position.set(LAMP.x + 0.9, 0.85, LAMP.z);
-red.target.position.set(-0.5, 0, 0.2);
-red.castShadow = true;
-red.shadow.mapSize.set(2048, 2048);
-red.shadow.bias = -0.0004;
-red.shadow.normalBias = 0.02;
-red.shadow.camera.near = 1;
-red.shadow.camera.far = 20;
-scene.add(red, red.target);
+const core = new THREE.SpotLight(0xffbe3a, 480, 0, 0.7, 0.9, 2);
+core.position.set(LAMP.x + 0.9, 0.85, LAMP.z);
+core.target.position.set(-0.5, 0, 0.2);
+core.castShadow = true;
+core.shadow.mapSize.set(2048, 2048);
+core.shadow.bias = -0.0004;
+core.shadow.normalBias = 0.02;
+core.shadow.camera.near = 1;
+core.shadow.camera.far = 20;
+scene.add(core, core.target);
 
-const orange = new THREE.PointLight(0xff7a24, 110, 0, 2);
+const orange = new THREE.PointLight(0xff6418, 120, 0, 2);
 orange.position.set(LAMP.x - 0.2, 1.9, LAMP.z);
 scene.add(orange);
 
-const pink = new THREE.PointLight(0xff4f9c, 120, 0, 2);
-pink.position.set(LAMP.x - 1.6, 4.2, LAMP.z + 0.6);
-scene.add(pink);
+const magenta = new THREE.PointLight(0xff2a8c, 95, 0, 2);
+magenta.position.set(LAMP.x - 1.6, 4.2, LAMP.z + 0.6);
+scene.add(magenta);
+
+const rim = new THREE.PointLight(0x6a5cff, 28, 0, 2);
+rim.position.set(LAMP.x - 2.6, 6.2, LAMP.z + 1.4);
+scene.add(rim);
 
 const uv = new THREE.HemisphereLight(0x7458ff, 0x05020a, 0.45);
 scene.add(uv);
@@ -602,14 +606,14 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-const base = { red: red.intensity, orange: orange.intensity, pink: pink.intensity };
+const base = { core: core.intensity, orange: orange.intensity, magenta: magenta.intensity };
 function frame(now) {
   stepTurn(now);
   // the lamp breathes very slightly
   const b = 1 + 0.035 * Math.sin(now / 1400) + 0.015 * Math.sin(now / 370);
-  red.intensity = base.red * b;
+  core.intensity = base.core * b;
   orange.intensity = base.orange * b;
-  pink.intensity = base.pink * (2 - b);
+  magenta.intensity = base.magenta * (2 - b);
   composer.render();
   requestAnimationFrame(frame);
 }
