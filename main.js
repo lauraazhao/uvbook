@@ -352,9 +352,9 @@ scene.add(sticker);
 // magenta wash that reaches further, and a thin violet-blue rim furthest out.
 // Plus the blacklight itself as a faint violet fill from above.
 // ---------------------------------------------------------------------------
-const LAMP = new THREE.Vector3(-8, 1.5, 0.35);
+const LAMP = new THREE.Vector3(-11.5, 1.5, 0.35);
 
-const core = new THREE.SpotLight(0xffbe3a, 480, 0, 0.7, 0.9, 2);
+const core = new THREE.SpotLight(0xffbe3a, 980, 0, 0.7, 0.9, 2);
 core.position.set(LAMP.x + 0.9, 0.85, LAMP.z);
 core.target.position.set(-0.5, 0, 0.2);
 core.castShadow = true;
@@ -362,18 +362,18 @@ core.shadow.mapSize.set(2048, 2048);
 core.shadow.bias = -0.0004;
 core.shadow.normalBias = 0.02;
 core.shadow.camera.near = 1;
-core.shadow.camera.far = 20;
+core.shadow.camera.far = 26;
 scene.add(core, core.target);
 
-const orange = new THREE.PointLight(0xff6418, 120, 0, 2);
+const orange = new THREE.PointLight(0xff6418, 240, 0, 2);
 orange.position.set(LAMP.x - 0.2, 1.9, LAMP.z);
 scene.add(orange);
 
-const magenta = new THREE.PointLight(0xff2a8c, 95, 0, 2);
+const magenta = new THREE.PointLight(0xff2a8c, 185, 0, 2);
 magenta.position.set(LAMP.x - 1.6, 4.2, LAMP.z + 0.6);
 scene.add(magenta);
 
-const rim = new THREE.PointLight(0x6a5cff, 28, 0, 2);
+const rim = new THREE.PointLight(0x6a5cff, 52, 0, 2);
 rim.position.set(LAMP.x - 2.6, 6.2, LAMP.z + 1.4);
 scene.add(rim);
 
