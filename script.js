@@ -16,8 +16,8 @@ const INDENT = FONT_SIZE * 1.4;
 
 // top-edge curves as [x, y] control points (two cubic segments each)
 const EDGE = {
-  left:  [[10, 30], [60, 12], [105, 0], [150, 0], [200, 0], [260, 10], [300, 38]],
-  right: [[0, 38], [40, 10], [100, 0], [150, 0], [195, 0], [240, 12], [290, 30]],
+  left:  [[10, 36], [60, 26], [81, 0], [135, 0], [210, 0], [270, 9], [300, 46]],
+  right: [[0, 46], [30, 9], [90, 0], [165, 0], [219, 0], [240, 26], [290, 36]],
 };
 // text column, in page units
 const COLUMN = { left: [38, 276], right: [24, 254] };
@@ -28,18 +28,21 @@ function measure(text, italic) {
   return measureCtx.measureText(text).width;
 }
 
-// A line starts flat at the left margin (so every line lines up, like print)
-// and bends only as it runs on: down into the gutter on the left page, and
-// down toward the outer edge on the right page, following the paper.
-const DROP = { left: 30, right: 20 };
+// Each line is a gentle arch, like print on a page that bows up off the table:
+// it starts on the shared left margin, rises a little through the middle and
+// comes back down at the end, dipping slightly more where it runs into the
+// gutter. Lines near the top bow the most; lower ones are almost straight.
+const ARCH = 7;                          // rise at the middle of the top line
+const END_DROP = { left: 5, right: 2.5 }; // extra fall at the line's end
 function linePath(side, base, bend) {
   const [x0, x1] = COLUMN[side];
   const w = x1 - x0;
-  const drop = bend * DROP[side];
+  const rise = ARCH * bend;
+  const drop = END_DROP[side] * bend;
+  const xe = x1 + 12; // run a little past the column so the last glyphs have path
+  const ye = base + drop + (drop + rise) * (12 / w);
   const f = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
-  // a little past the column end so the last glyphs always have path under them
-  const xe = x1 + 12;
-  return `M${f(x0, base)} C${f(x0 + 0.5 * w, base)} ${f(x0 + 0.85 * w, base + 0.4 * drop)} ${f(xe, base + drop * 1.15)}`;
+  return `M${f(x0, base)} C${f(x0 + w / 3, base - rise * 1.33)} ${f(x0 + (2 * w) / 3, base - rise * 1.33 + drop * 0.3)} ${f(x1, base + drop)} L${f(xe, ye)}`;
 }
 
 // arc-length position on a path where it reaches a given x
