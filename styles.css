@@ -1,19 +1,30 @@
+/*
+  Style source: photo of a paperback under blacklight.
+  - paper reads rosy-mauve: cool lavender up top, warm pink/salmon low and left
+  - ink fluoresces blue-violet with a soft halo; highlighter glows violet
+  - the outer page edge burns red-orange; the page block underneath is dark grey
+  Layout source: the Figma frame (open book centred, curved tops, glow spilling left,
+  glow at the spine, shadow on the right edge).
+*/
 :root {
-  --bg: #000;
-  /* paper under blacklight: pale, slightly violet */
-  --paper: #cdbccf;
-  --paper-uv: #a991bd;
-  /* fluorescent ink */
-  --ink: #4f6bff;
-  --ink-core: #6f88ff;
-  --ink-glow: rgba(70, 100, 255, 0.55);
-  /* colored lights */
-  --magenta: 233, 32, 108;
-  --violet: 120, 60, 255;
-  --amber: 255, 92, 40;
+  --bg: #030204;
+
+  /* ink: near-white core, blue-violet halo */
+  --ink-core: #e4dcff;
+  --ink-mid: 132, 112, 255;
+  --ink-deep: 84, 60, 255;
+
+  /* lights */
+  --pink: 255, 70, 140;
+  --rose: 236, 110, 160;
+  --ember: 255, 72, 36;
+  --uv: 110, 70, 255;
 
   --page-w: min(29.2vw, 46vh, 420px);
-  --flip-ms: 1100ms;
+  --flip-ms: 1200ms;
+
+  /* fine paper grain */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.55  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 * { box-sizing: border-box; }
@@ -32,36 +43,50 @@ html, body {
   display: grid;
   place-items: center;
   perspective: 2200px;
+  /* the room: warm-brown dark on the left where the light leaks, deep navy to the right */
+  background:
+    radial-gradient(45% 55% at 22% 55%, rgba(60, 14, 10, 0.55), transparent 70%),
+    radial-gradient(50% 60% at 85% 60%, rgba(10, 14, 40, 0.6), transparent 70%),
+    var(--bg);
 }
 
-/* ---------- light spilling onto the surface around the book ---------- */
+/* film grain over the whole frame, like the photo */
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  opacity: 0.08;
+  mix-blend-mode: screen;
+}
+
+/* ---------- light spilling off the book onto the table ---------- */
 .spill {
   position: absolute;
   pointer-events: none;
   border-radius: 50%;
-  filter: blur(18px);
 }
 .spill--left {
-  /* the pink glow that falls off the left edge of the book (Figma: Ellipse 1) */
-  width: calc(var(--page-w) * 0.86);
-  height: calc(var(--page-w) * 1.3);
-  left: calc(50% - var(--page-w) * 1.43);
-  top: calc(50% - var(--page-w) * 0.58);
+  /* red-pink light falling off the left edge (Figma: Ellipse 1) */
+  width: calc(var(--page-w) * 0.95);
+  height: calc(var(--page-w) * 1.45);
+  left: calc(50% - var(--page-w) * 1.55);
+  top: calc(50% - var(--page-w) * 0.62);
   background: radial-gradient(closest-side,
-    rgba(var(--magenta), 0.55),
-    rgba(var(--magenta), 0.22) 45%,
-    rgba(var(--magenta), 0.06) 75%,
+    rgba(var(--ember), 0.42),
+    rgba(var(--pink), 0.22) 35%,
+    rgba(var(--pink), 0.08) 65%,
+    rgba(var(--pink), 0.02) 85%,
     transparent);
-  animation: breathe 7s ease-in-out infinite;
+  filter: blur(28px);
+  animation: breathe 9s ease-in-out infinite;
 }
 .spill--uv {
-  /* faint blacklight wash behind everything */
+  /* the blacklight itself, somewhere above: a broad, faint violet wash */
   inset: -10%;
   border-radius: 0;
-  filter: none;
-  background:
-    radial-gradient(60% 45% at 50% 42%, rgba(var(--violet), 0.10), transparent 70%),
-    radial-gradient(30% 30% at 82% 70%, rgba(40, 80, 255, 0.06), transparent 70%);
+  background: radial-gradient(55% 45% at 50% 40%, rgba(var(--uv), 0.10), transparent 70%);
 }
 
 /* ---------- book ---------- */
@@ -76,32 +101,53 @@ html, body {
 
 .book__shadow {
   position: absolute;
-  left: 2%;
-  right: 2%;
-  bottom: -5%;
-  height: 10%;
-  background: radial-gradient(closest-side, rgba(90, 40, 200, 0.35), transparent);
-  filter: blur(10px);
+  left: 1%;
+  right: 1%;
+  bottom: -6%;
+  height: 12%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.9), transparent);
+  filter: blur(8px);
 }
 
-/* the stack of pages peeking out under each side */
+/* the stack of pages under each side: dark grey edges, barely lit */
 .book__block {
   position: absolute;
-  bottom: -1.6%;
-  height: 4%;
-  width: 50%;
-  background: repeating-linear-gradient(180deg,
-    #b8a9c9 0 1px, #7f6f9a 1px 2px);
-  box-shadow: 0 0 10px rgba(var(--violet), 0.4);
+  bottom: -2.4%;
+  height: 4.8%;
+  width: 50.6%;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55)),
+    repeating-linear-gradient(180deg, #5a5560 0 1px, #2c2a31 1px 2.5px);
 }
 .book__block--left {
   left: -0.6%;
-  border-radius: 0 0 0 6px;
-  box-shadow: -6px 0 16px rgba(var(--amber), 0.55), 0 0 10px rgba(var(--violet), 0.4);
+  border-radius: 0 0 0 5px;
+  /* the outer edge glows hot like the photo */
+  box-shadow:
+    -2px 0 0 rgba(var(--ember), 0.9),
+    -6px 0 14px rgba(var(--ember), 0.55);
 }
 .book__block--right {
   right: -0.6%;
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 5px 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6)),
+    linear-gradient(90deg, rgba(0,0,0,0) 70%, rgba(0,0,0,0.7)),
+    repeating-linear-gradient(180deg, #4d4952 0 1px, #232128 1px 2.5px);
+}
+/* a fluorescent library sticker on the bottom edge, glowing green-yellow */
+.book__block--left::after {
+  content: "";
+  position: absolute;
+  left: 58%;
+  top: 22%;
+  width: 16%;
+  height: 58%;
+  border-radius: 1px;
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgba(120, 255, 140, 0.9) 18% 26%, transparent 26% 52%, rgba(230, 255, 90, 0.85) 52% 70%, transparent 70%),
+    #0c0f12;
+  box-shadow: 0 0 6px rgba(140, 255, 120, 0.45);
 }
 
 /* ---------- pages ---------- */
@@ -121,14 +167,29 @@ html, body {
   inset: 0;
   overflow: hidden;
   container-type: inline-size;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.05), transparent 30%),
-    radial-gradient(120% 90% at 50% 40%, var(--paper), var(--paper-uv));
+  background-color: #b493b8;
 }
-.page--left .page__paper { clip-path: url(#clip-left); }
-.page--right .page__paper { clip-path: url(#clip-right); }
+.page--left .page__paper {
+  clip-path: url(#clip-left);
+  background-image:
+    var(--grain),
+    /* warm salmon low on the outer side */
+    radial-gradient(90% 70% at 0% 100%, rgba(232, 128, 140, 0.9), transparent 70%),
+    /* cool lavender up top */
+    radial-gradient(110% 60% at 60% 0%, rgba(190, 170, 235, 0.95), transparent 75%),
+    linear-gradient(180deg, #c3a9d6, #d49cbc 55%, #c98aa6);
+}
+.page--right .page__paper {
+  clip-path: url(#clip-right);
+  background-image:
+    var(--grain),
+    radial-gradient(80% 60% at 20% 100%, rgba(225, 125, 150, 0.75), transparent 70%),
+    radial-gradient(110% 60% at 40% 0%, rgba(185, 168, 232, 0.95), transparent 75%),
+    linear-gradient(180deg, #bea8d6, #cc9cc0 55%, #bf8aa8);
+}
 
-/* lighting is painted over the paper and text so the glows tint everything */
+/* ---------- lighting ---------- */
+/* shadows: the page curls down into the gutter and falls away at the outer edge */
 .page__light {
   position: absolute;
   inset: 0;
@@ -137,42 +198,48 @@ html, body {
 }
 .page--left .page__light {
   background:
-    radial-gradient(28% 34% at 0% 52%, rgba(var(--magenta), 0.95), rgba(var(--magenta), 0.35) 50%, transparent 100%),
-    radial-gradient(30% 42% at 100% 45%, rgba(var(--magenta), 0.95), rgba(var(--magenta), 0.35) 50%, transparent 100%),
-    linear-gradient(90deg, transparent 80%, rgba(60, 20, 90, 0.18));
+    linear-gradient(90deg, transparent 84%, rgba(120, 70, 120, 0.55) 97%, rgba(60, 30, 70, 0.85)),
+    linear-gradient(180deg, transparent 70%, rgba(110, 70, 110, 0.45));
 }
 .page--right .page__light {
   background:
-    radial-gradient(30% 42% at 0% 45%, rgba(var(--magenta), 0.95), rgba(var(--magenta), 0.35) 50%, transparent 100%),
-    radial-gradient(18% 70% at 103% 48%, rgba(10, 0, 20, 0.95), rgba(30, 10, 40, 0.55) 55%, transparent 100%),
-    linear-gradient(270deg, rgba(20, 0, 30, 0.35), transparent 12%);
+    linear-gradient(90deg, rgba(60, 30, 70, 0.85), rgba(120, 70, 120, 0.5) 3%, transparent 14%),
+    /* page stack falls into shadow on the right (Figma: Rectangle 7) */
+    radial-gradient(22% 75% at 104% 50%, rgba(15, 5, 25, 0.98), rgba(40, 20, 50, 0.6) 55%, transparent 100%),
+    linear-gradient(180deg, transparent 70%, rgba(110, 70, 110, 0.45));
 }
-/* a brighter additive bloom on top of the multiply tint */
+
+/* coloured light added on top: screen blending so it brightens like real light */
 .page__paper::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   mix-blend-mode: screen;
-  animation: breathe 7s ease-in-out infinite;
+  animation: breathe 9s ease-in-out infinite;
 }
 .page--left .page__paper::after {
   background:
-    radial-gradient(14% 20% at 0% 52%, rgba(var(--magenta), 0.55), transparent),
-    radial-gradient(12% 22% at 100% 45%, rgba(var(--magenta), 0.5), transparent);
+    /* red-orange burn along the outer edge */
+    linear-gradient(90deg, rgba(var(--ember), 1), rgba(var(--ember), 0.45) 2.5%, rgba(var(--ember), 0.12) 7%, transparent 13%),
+    /* pink light at the outer edge (Figma: left glow) */
+    radial-gradient(38% 30% at 0% 54%, rgba(var(--pink), 0.7), rgba(var(--pink), 0.28) 45%, rgba(var(--pink), 0.08) 75%, transparent),
+    /* pink light pooling in the gutter (Figma: spine glow) */
+    radial-gradient(34% 36% at 100% 46%, rgba(var(--pink), 0.62), rgba(var(--pink), 0.24) 45%, rgba(var(--pink), 0.06) 78%, transparent);
 }
 .page--right .page__paper::after {
-  background: radial-gradient(12% 22% at 0% 45%, rgba(var(--magenta), 0.5), transparent);
+  background:
+    radial-gradient(34% 36% at 0% 46%, rgba(var(--pink), 0.62), rgba(var(--pink), 0.24) 45%, rgba(var(--pink), 0.06) 78%, transparent);
 }
 
-/* ---------- glowing UV text ---------- */
+/* ---------- fluorescent ink ---------- */
 .page__arc,
 .page__text,
 .page__num,
 .page__hint {
   position: absolute;
   font-family: "EB Garamond", Garamond, "Times New Roman", serif;
-  color: var(--ink);
+  color: var(--ink-core);
 }
 
 .page__arc {
@@ -182,10 +249,14 @@ html, body {
   overflow: visible;
 }
 .page__arc text {
-  font-size: 11.2px; /* in the 300-unit viewBox ≈ 3.73cqw, matches body text */
+  font-size: 11.2px; /* 300-unit viewBox: matches the 3.73cqw body text */
+  font-weight: 500;
   fill: var(--ink-core);
-  filter: drop-shadow(0 0 0.4px rgba(180, 200, 255, 0.9)) drop-shadow(0 0 2px var(--ink-glow));
   letter-spacing: 0.15px;
+  filter:
+    drop-shadow(0 0 0.5px rgba(var(--ink-mid), 1))
+    drop-shadow(0 0 1.6px rgba(var(--ink-deep), 0.9))
+    drop-shadow(0 0 5px rgba(var(--ink-deep), 0.45));
 }
 
 .page__text {
@@ -198,12 +269,12 @@ html, body {
   line-height: 1.42;
   text-align: justify;
   hyphens: auto;
-  color: var(--ink-core);
   text-shadow:
-    0 0 1px rgba(180, 200, 255, 0.9),
-    0 0 3px var(--ink-glow),
-    0 0 9px rgba(70, 100, 255, 0.3);
-  animation: ink-flicker 5s steps(1) infinite;
+    0 0 1px rgba(var(--ink-mid), 1),
+    0 0 2.5px rgba(var(--ink-deep), 0.95),
+    0 0 7px rgba(var(--ink-deep), 0.55),
+    0 0 16px rgba(var(--ink-deep), 0.25);
+  animation: ink-flicker 6s steps(1) infinite;
 }
 .page--right .page__text { left: 6%; right: 12.6%; }
 .page--left .page__text { left: 11.6%; right: 7%; }
@@ -211,14 +282,27 @@ html, body {
 .page__text p { margin: 0 0 0.55em; text-indent: 1.4em; }
 .page__text p:first-child { text-indent: 0; }
 
+/* highlighter: in the photo it fluoresces as a soft violet band behind the words */
+.page__text mark {
+  color: inherit;
+  background: linear-gradient(180deg, rgba(var(--uv), 0.12), rgba(var(--uv), 0.38) 30%, rgba(var(--uv), 0.38) 70%, rgba(var(--uv), 0.12));
+  box-shadow: 0 0 14px 6px rgba(var(--uv), 0.22);
+  border-radius: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 0.1em;
+}
+
 .page__num {
   bottom: 4.2%;
   left: 0;
   right: 0;
   text-align: center;
   font-size: 3.4cqw;
-  color: var(--ink-core);
-  text-shadow: 0 0 4px var(--ink-glow), 0 0 10px var(--ink-glow);
+  text-shadow:
+    0 0 1px rgba(var(--ink-mid), 1),
+    0 0 3px rgba(var(--ink-deep), 0.9),
+    0 0 9px rgba(var(--ink-deep), 0.45);
 }
 
 .page__hint {
@@ -227,9 +311,7 @@ html, body {
   font-size: 2.8cqw;
   font-style: italic;
   letter-spacing: 0.04em;
-  color: var(--ink-core);
-  opacity: 0.75;
-  text-shadow: 0 0 6px var(--ink-glow);
+  text-shadow: 0 0 3px rgba(var(--ink-deep), 0.9), 0 0 8px rgba(var(--ink-deep), 0.5);
   animation: hint 2.6s ease-in-out infinite;
 }
 .book.is-flipped .page__hint { opacity: 0; animation: none; }
@@ -251,38 +333,38 @@ html, body {
 }
 .leaf__back { transform: rotateY(180deg); }
 
-/* shading that sweeps across the leaf while it is in the air */
+/* as the leaf lifts it catches the light and glows salmon-red, like the page in the photo */
 .leaf__shade {
   position: absolute;
   inset: 0;
   pointer-events: none;
   clip-path: url(#clip-right);
   opacity: 0;
-  background: linear-gradient(90deg, rgba(var(--violet), 0.0), rgba(10, 0, 30, 0.55));
+  mix-blend-mode: screen;
+  background:
+    linear-gradient(90deg, rgba(var(--ember), 0.15), rgba(var(--pink), 0.55) 55%, rgba(var(--ember), 0.35));
   backface-visibility: hidden;
 }
 .book.is-turning .leaf__shade { animation: leaf-shade var(--flip-ms) ease-in-out; }
 
-/* page under the leaf darkens slightly while covered by the moving leaf */
-.page--under .page__paper { transition: filter var(--flip-ms) ease; }
+/* page under the leaf sits in the leaf's shadow until it lands */
 .book.is-turning .page--under .page__paper { animation: under-shade var(--flip-ms) ease-in-out; }
-
 .page--under { z-index: 1; }
 
 /* ---------- animations ---------- */
 @keyframes breathe {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.82; }
+  50% { opacity: 0.86; }
 }
 @keyframes ink-flicker {
   0%, 100% { opacity: 1; }
-  41% { opacity: 0.94; }
+  41% { opacity: 0.95; }
   42% { opacity: 1; }
   77% { opacity: 0.97; }
 }
 @keyframes hint {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 0.9; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.85; }
 }
 @keyframes leaf-shade {
   0% { opacity: 0; }
@@ -290,7 +372,7 @@ html, body {
   100% { opacity: 0; }
 }
 @keyframes under-shade {
-  0% { filter: brightness(0.75); }
+  0% { filter: brightness(0.6); }
   100% { filter: brightness(1); }
 }
 
