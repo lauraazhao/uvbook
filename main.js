@@ -377,23 +377,45 @@ const rim = new THREE.PointLight(0x6a5cff, 52, 0, 2);
 rim.position.set(LAMP.x - 2.6, 6.2, LAMP.z + 1.4);
 scene.add(rim);
 
-// A second, neon light low at the bottom left. It's modelled as three nested
-// spotlights from one spot so the beam grades like a neon gradient: a narrow
-// violet-magenta core, a wider hot-pink band, and a soft peach-yellow outer
-// edge. Their penumbras overlap into a faint rainbow fringe on the paper.
-const NEON = new THREE.Vector3(-6.2, 0.55, 5.2);
-function neonBeam(color, intensity, angle, penumbra, aim) {
-  const l = new THREE.SpotLight(color, intensity, 0, angle, penumbra, 2);
-  l.position.copy(NEON);
-  l.target.position.set(aim[0], 0, aim[1]);
-  scene.add(l, l.target);
-  return l;
+// A second, neon light low at the bottom left. It's one spotlight that
+// projects a radial colour map (a light "cookie"), so its beam lands on the
+// paper in rings like light through a prism: purple at the core, then pink,
+// fading to yellow-green, then thin blue rings, then on through the rest of
+// the spectrum before it fades out.
+const NEON = new THREE.Vector3(-5.4, 2.4, 4.6);
+function neonRings() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 512;
+  const g = c.getContext("2d");
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, 512, 512);
+  const r = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+  [
+    [0.0, "#8a24ff"], [0.16, "#a92cff"], [0.3, "#e23bd8"], [0.42, "#ff4fa0"],
+    [0.53, "#ffc46a"], [0.61, "#d9f56a"], [0.66, "#9cf07a"],
+    [0.69, "#2f6bff"], [0.71, "#8ff2c0"], [0.735, "#3a55ff"], [0.755, "#7fe6ff"],
+    [0.78, "#2a3cff"], [0.81, "#9a3cff"], [0.85, "#ff3c9a"], [0.89, "#ff8a3a"],
+    [0.93, "#5a1e60"], [1.0, "#000000"],
+  ].forEach(([o, col]) => r.addColorStop(o, col));
+  g.fillStyle = r;
+  g.beginPath();
+  g.arc(256, 256, 256, 0, Math.PI * 2);
+  g.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
-// each band aims a little further up the page, so the colours sit side by
-// side across the paper instead of mixing into one blob
-const neonCore = neonBeam(0xa21cff, 340, 0.16, 0.6, [-1.9, 1.7]);
-const neonPink = neonBeam(0xff1f9a, 280, 0.17, 0.65, [-1.15, 1.05]);
-const neonPeach = neonBeam(0xffbf70, 110, 0.19, 0.75, [-0.6, 0.7]);
+const neon = new THREE.SpotLight(0xffffff, 320, 0, 0.36, 0.05, 2);
+neon.position.copy(NEON);
+neon.target.position.set(-1.5, 0.3, 0.9);
+neon.map = neonRings();
+neon.castShadow = true; // three only projects a light map when shadows are on
+neon.shadow.mapSize.set(1024, 1024);
+neon.shadow.bias = -0.0004;
+neon.shadow.normalBias = 0.02;
+neon.shadow.camera.near = 1;
+neon.shadow.camera.far = 20;
+scene.add(neon, neon.target);
 
 const uv = new THREE.HemisphereLight(0x7458ff, 0x05020a, 0.45);
 scene.add(uv);
