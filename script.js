@@ -161,9 +161,158 @@ function layoutPage(paper) {
 }
 
 function layoutAll() {
-  document.querySelectorAll(".page__paper").forEach(layoutPage);
+  document.querySelectorAll(".page > .page__paper, .leaf__face > .page__paper").forEach(layoutPage);
+  buildStrips();
 }
 
+// ---------------------------------------------------------------------------
+// 2. Build the turning leaf as a chain of hinged strips so it can bend.
+// ---------------------------------------------------------------------------
+const book = document.getElementById("book");
+const leaf = document.getElementById("leaf");
+const STRIPS = 14;
+let strips = [];
+
+function buildStrips() {
+  const front = leaf.querySelector(".leaf__front .page__paper");
+  const back = leaf.querySelector(".leaf__back .page__paper");
+  leaf.querySelector(":scope > .strip")?.remove();
+
+  let parent = leaf;
+  strips = [];
+  for (let i = 0; i < STRIPS; i++) {
+    const strip = document.createElement("div");
+    strip.className = "strip";
+    if (i === 0) strip.style.width = `${100 / STRIPS}%`;
+
+    // front shows slice i of page 121; back shows the mirrored slice of page 122
+    const faces = [
+      ["strip__front page--right", front, i],
+      ["strip__back page--left", back, STRIPS - 1 - i],
+    ];
+    for (const [cls, source, slot] of faces) {
+      const face = document.createElement("div");
+      face.className = `strip__face ${cls}`;
+      const slice = document.createElement("div");
+      slice.className = "strip__slice";
+      slice.style.left = `${-slot * 100}%`;
+      slice.style.width = `${STRIPS * 100}%`;
+      const copy = source.cloneNode(true);
+      copy.querySelector(".page__text")?.remove(); // keep one readable copy only
+      slice.append(copy);
+      face.append(slice);
+      strip.append(face);
+    }
+    parent.append(strip);
+    strips.push(strip);
+    parent = strip;
+  }
+  applyPose(currentPose);
+}
+
+// ---------------------------------------------------------------------------
+// 3. Turn the page like thin paper, relighting every strip from the lamp.
+//
+// The sheet is pulled over from the spine, so the spine side leads and the free
+// edge trails behind in a curl; it catches up as the page lands, then flutters
+// briefly before lying flat. Each strip is lit by how directly it faces the
+// lamp (off-screen left, a little above the table), so the light follows the
+// curve of the paper. The lifted sheet also shadows the pages under it.
+// ---------------------------------------------------------------------------
+const LAMP = { x: -0.8, z: 0.6 };      // direction from the book toward the lamp
+const REST = LAMP.z;                    // how lit a page lying flat is
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const rad = (d) => (d * Math.PI) / 180;
+
+// a pose is the absolute angle of every strip (0 = flat on the right, 180 = flat on the left)
+let currentPose = new Array(STRIPS).fill(0);
+let flipped = false;
+let animating = false;
+
+function applyPose(pose) {
+  let prev = 0;
+  strips.forEach((strip, i) => {
+    const a = pose[i];
+    const th = rad(a);
+    const front = LAMP.x * Math.sin(th) + LAMP.z * Math.cos(th);
+    const back = -front;
+    const s = strip.style;
+    s.setProperty("--hinge", (a - prev).toFixed(3));
+    s.setProperty("--front-dark", clamp(1 - front / REST).toFixed(3));
+    s.setProperty("--back-dark", clamp(1 - back / REST).toFixed(3));
+    s.setProperty("--back-glow", clamp((back - REST) / (1 - REST)).toFixed(3));
+    prev = a;
+  });
+  // shadow on the pages below follows the middle of the sheet
+  const mid = rad(pose[Math.floor(STRIPS / 2)] ?? 0);
+  const deg = pose[Math.floor(STRIPS / 2)] ?? 0;
+  book.style.setProperty("--under-shadow", (0.6 * Math.sin(mid)).toFixed(3));
+  book.style.setProperty("--base-shadow", (deg > 90 ? 0.5 * Math.sin(mid) : 0).toFixed(3));
+}
+
+// pose while turning: p goes 0 -> 1, dir is +1 forward, -1 back
+function turningPose(p, dir) {
+  const base = dir > 0 ? 180 * ease(p) : 180 * (1 - ease(p));
+  const lift = Math.sin(Math.PI * p);              // curl is strongest mid-turn
+  return Array.from({ length: STRIPS }, (_, i) => {
+    const s = (i + 0.5) / STRIPS;                   // 0 at the spine, 1 at the edge
+    // trailing edge: the further from the spine, the more it lags behind
+    const lag = 62 * lift * Math.pow(s, 1.7);
+    // a soft ripple travelling out along the sheet
+    const ripple = 7 * lift * Math.sin(Math.PI * (2.2 * s - 3 * p)) * s;
+    return clamp(base - dir * lag + ripple, 0, 180);
+  });
+}
+
+// after landing: the free edge lifts off and drops back a couple of times
+function settlePose(t, target) {
+  const away = target === 180 ? -1 : 1;
+  const amp = 9 * Math.exp(-t / 160) * Math.abs(Math.sin((Math.PI * t) / 190));
+  return Array.from({ length: STRIPS }, (_, i) => {
+    const s = (i + 0.5) / STRIPS;
+    return clamp(target + away * amp * Math.pow(s, 2.2), 0, 180);
+  });
+}
+
+function turn(toFlipped) {
+  if (animating || flipped === toFlipped) return;
+  animating = true;
+  flipped = toFlipped;
+  book.classList.toggle("is-flipped", toFlipped);
+  const dir = toFlipped ? 1 : -1;
+  const target = toFlipped ? 180 : 0;
+  const TURN = reduceMotion.matches ? 0 : 1500;
+  const SETTLE = reduceMotion.matches ? 0 : 650;
+  const t0 = performance.now();
+
+  const step = () => {
+    const t = performance.now() - t0;
+    if (t < TURN) currentPose = turningPose(t / TURN, dir);
+    else if (t < TURN + SETTLE) currentPose = settlePose(t - TURN, target);
+    else currentPose = new Array(STRIPS).fill(target);
+    applyPose(currentPose);
+    if (t < TURN + SETTLE) requestAnimationFrame(step);
+    else animating = false;
+  };
+  requestAnimationFrame(step);
+}
+
+book.addEventListener("click", (e) => {
+  const rect = book.getBoundingClientRect();
+  turn(e.clientX > rect.left + rect.width / 2);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" || e.key === " ") turn(true);
+  if (e.key === "ArrowLeft") turn(false);
+});
+
+// ---------------------------------------------------------------------------
+// 4. Start
+// ---------------------------------------------------------------------------
 // Draw now with whatever font is available, then again once EB Garamond arrives
 // (line breaks depend on the real glyph widths).
 layoutAll();
@@ -178,68 +327,4 @@ document.fonts.ready.then(relayout);
 window.addEventListener("load", () => {
   document.fonts.load(`500 ${FONT_SIZE}px "EB Garamond"`).then(relayout, () => {});
   document.fonts.load(`italic 500 ${FONT_SIZE}px "EB Garamond"`).then(relayout, () => {});
-});
-
-// ---------------------------------------------------------------------------
-// 2. Turn the page, relighting it from the lamp at every frame.
-//
-// The lamp sits off the left of the screen, a little above the table. As the
-// leaf swings over the spine, the side facing the lamp brightens and the side
-// facing away falls into shade; the lifted leaf also casts a shadow on the
-// pages underneath it.
-// ---------------------------------------------------------------------------
-const book = document.getElementById("book");
-const LAMP = { x: -0.8, z: 0.6 };      // direction from the book toward the lamp
-const REST = LAMP.z;                    // how lit a page lying flat is
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-let angle = 0;          // 0 = lying on the right, 180 = lying on the left
-let animating = false;
-
-const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
-const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-function applyAngle(deg) {
-  const th = (deg * Math.PI) / 180;
-  // normal of the front face after rotating about the spine
-  const nx = Math.sin(th), nz = Math.cos(th);
-  const front = LAMP.x * nx + LAMP.z * nz;     // front face lighting
-  const back = -front;                         // back face lighting
-  const s = book.style;
-  s.setProperty("--angle", deg.toFixed(2));
-  s.setProperty("--front-dark", clamp(1 - front / REST).toFixed(3));
-  s.setProperty("--back-dark", clamp(1 - back / REST).toFixed(3));
-  s.setProperty("--back-glow", clamp((back - REST) / (1 - REST)).toFixed(3));
-  s.setProperty("--under-shadow", (0.6 * Math.sin(th)).toFixed(3));
-  s.setProperty("--base-shadow", (deg > 90 ? 0.5 * Math.sin(th) : 0).toFixed(3));
-}
-
-function turn(toFlipped) {
-  const target = toFlipped ? 180 : 0;
-  if (animating || angle === target) return;
-  animating = true;
-  book.classList.toggle("is-flipped", toFlipped);
-  const from = angle;
-  const duration = reduceMotion.matches ? 0 : 1300;
-  const t0 = performance.now();
-  const step = (now) => {
-    const t = duration ? clamp((now - t0) / duration) : 1;
-    angle = from + (target - from) * ease(t);
-    applyAngle(angle);
-    if (t < 1) requestAnimationFrame(step);
-    else { angle = target; animating = false; }
-  };
-  requestAnimationFrame(step);
-}
-
-applyAngle(0);
-
-book.addEventListener("click", (e) => {
-  const rect = book.getBoundingClientRect();
-  turn(e.clientX > rect.left + rect.width / 2);
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowRight" || e.key === " ") turn(true);
-  if (e.key === "ArrowLeft") turn(false);
 });

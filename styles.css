@@ -360,21 +360,51 @@ html, body {
 .book.is-flipped .page__hint { opacity: 0; animation: none; }
 
 /* ---------- the turning leaf ---------- */
-/* script.js sets --angle every frame, plus how much light each face gets */
+/*
+  The leaf is a chain of narrow hinged strips (built by script.js), each one
+  attached to the outer edge of the one before. Bending each hinge a little
+  lets the sheet curl like thin paper. script.js sets every strip's hinge angle
+  and how much lamp light each side of that strip receives.
+*/
 .leaf {
-  transform-origin: 0% 50%;
   transform-style: preserve-3d;
-  transform: rotateY(calc(var(--angle, 0) * -1deg));
   z-index: 2;
 }
-
+/* the laid-out page faces; the strips copy slices of them */
 .leaf__face {
   position: absolute;
   inset: 0;
+  visibility: hidden;
+}
+
+.strip {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0% 50%;
+  transform-style: preserve-3d;
+  transform: rotateY(calc(var(--hinge, 0) * -1deg));
+}
+.leaf > .strip { left: 0; }
+
+.strip__face {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: -0.6px;   /* hide hairline seams between strips */
+  overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
-.leaf__back { transform: rotateY(180deg); }
+.strip__back { transform: rotateY(180deg); }
+.strip__slice {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
 
 .page__dyn {
   position: absolute;
@@ -383,21 +413,21 @@ html, body {
   opacity: 0;
 }
 /* front of the leaf turns away from the lamp as it lifts */
-.leaf__front .page__dyn {
+.strip__front .page__dyn {
   background: linear-gradient(90deg, rgba(40, 15, 55, 0.7), rgba(15, 5, 25, 0.95));
   mix-blend-mode: multiply;
   opacity: var(--front-dark, 0);
 }
 /* back of the leaf swings round to face the lamp: dark at first, then it catches
    the full sunset colour before settling into the left-page light */
-.leaf__back .page__dyn {
+.strip__back .page__dyn {
   background:
     radial-gradient(150% 110% at -40% 54%,
       rgba(var(--lamp-core), 1), rgba(var(--lamp-orange), 0.75) 40%, rgba(var(--lamp-pink), 0.5) 75%, transparent);
   mix-blend-mode: hard-light;
   opacity: var(--back-glow, 0);
 }
-.leaf__back .page__light { box-shadow: inset 0 0 0 999px rgba(15, 5, 25, calc(var(--back-dark, 0) * 0.9)); }
+.strip__back .page__light { box-shadow: inset 0 0 0 999px rgba(15, 5, 25, calc(var(--back-dark, 0) * 0.9)); }
 /* shadow the lifted leaf throws on the pages under it */
 .page--under .page__dyn {
   background: linear-gradient(90deg, rgba(10, 0, 20, 0.95), rgba(10, 0, 20, 0.45) 60%, rgba(10, 0, 20, 0.1));
