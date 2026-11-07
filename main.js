@@ -26,8 +26,8 @@ const EDGE = {
 };
 
 // ---------------------------------------------------------------------------
-// Typesetting: lines follow a softened copy of the page's top edge, all
-// starting on one straight left margin. Drawn glyph by glyph along the curve.
+// Typesetting: a justified block with straight left and right margins, like a
+// printed page. Lines are drawn glyph by glyph along a path (flat here).
 // ---------------------------------------------------------------------------
 const FONT_SIZE = 11.2;
 const LINE_H = 16.4;
@@ -129,9 +129,9 @@ function layout(ctx, section) {
     while (wi < words.length) {
       const base = FIRST_BASE + lineIndex * LINE_H;
       if (base > LAST_BASE) return lines;
-      const t = (base - FIRST_BASE) / (LAST_BASE - FIRST_BASE);
-      const bend = 0.12 + 0.28 * Math.pow(1 - t, 1.3);
-      const poly = linePoly(side, base, bend);
+      // lines are straight on the paper, so both margins are straight; the
+      // gentle curve you see comes from the 3D page itself bending
+      const poly = linePoly(side, base, 0);
       const indent = first && pi > 0 ? INDENT : 0;
       const start = lenAtX(poly, colStart) + indent;
       const avail = lenAtX(poly, colEnd) - start;
@@ -707,4 +707,4 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, poseLeaf, turningPose, scene, camera };
+window.__uvbook = { turn, poseLeaf, turningPose, scene, camera, textures };
