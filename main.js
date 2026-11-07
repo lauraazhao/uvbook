@@ -521,28 +521,36 @@ function poseLeaf(turn) {
 
 // ---------------------------------------------------------------------------
 // Turning: the spine side leads and the free edge trails in a curl, a ripple
-// runs along the sheet, and the edge flutters as it lands.
+// runs along the sheet, and the free edge glides down onto the stack on a
+// cushion of air at the end, with no rebound, the way thin paper lands.
 // ---------------------------------------------------------------------------
 const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
+const AIR = 0.12;
+
 function turningPose(p, dir) {
   const base = dir > 0 ? 180 * ease(p) : 180 * (1 - ease(p));
   const lift = Math.sin(Math.PI * p);
+  // the trailing edge hasn't quite touched down when the spine side lands
+  const cushion = lift + AIR * Math.pow(p, 4);
   return Array.from({ length: SEG }, (_, i) => {
     const s = (i + 0.5) / SEG;
-    const lag = 62 * lift * Math.pow(s, 1.7);
+    const lag = 62 * cushion * Math.pow(s, 1.7);
     const ripple = 7 * lift * Math.sin(Math.PI * (2.2 * s - 3 * p)) * s;
     return clamp(base - dir * lag + ripple, 0, 180);
   });
 }
 
-function settlePose(t, target) {
+// Overdamped landing: the leftover lift drains away monotonically, starting
+// at the speed the turn ended with and easing to rest. No bounce.
+function settlePose(t, target, dur) {
   const away = target === 180 ? -1 : 1;
-  const amp = 9 * Math.exp(-t / 160) * Math.abs(Math.sin((Math.PI * t) / 190));
+  const u = dur > 0 ? clamp(t / dur) : 1;
+  const amp = 62 * AIR * Math.pow(1 - u, 8);
   return Array.from({ length: SEG }, (_, i) => {
     const s = (i + 0.5) / SEG;
-    return clamp(target + away * amp * Math.pow(s, 2.2), 0, 180);
+    return clamp(target + away * amp * Math.pow(s, 1.7), 0, 180);
   });
 }
 
@@ -560,11 +568,11 @@ function turn(toFlipped) {
 function stepTurn(now) {
   if (!anim) return;
   const TURN = reduceMotion.matches ? 0 : 1500;
-  const SETTLE = reduceMotion.matches ? 0 : 650;
+  const SETTLE = reduceMotion.matches ? 0 : 700;
   const t = now - anim.t0;
   let pose;
   if (t < TURN) pose = turningPose(t / TURN, anim.dir);
-  else if (t < TURN + SETTLE) pose = settlePose(t - TURN, anim.target);
+  else if (t < TURN + SETTLE) pose = settlePose(t - TURN, anim.target, SETTLE);
   else { pose = new Array(SEG).fill(anim.target); anim = null; }
   poseLeaf(pose);
 }
