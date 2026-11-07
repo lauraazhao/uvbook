@@ -405,14 +405,14 @@ function neonRings() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-const neon = new THREE.SpotLight(0xffffff, 2200, 0, 0.98, 0.05, 2);
+const neon = new THREE.SpotLight(0xffffff, 620, 0, 1.12, 0.05, 2);
 neon.position.copy(NEON);
-neon.target.position.set(-6.6, 0, 5.8);
+neon.target.position.set(-5.9, 0, 4.9);
 neon.map = neonRings();
 neon.castShadow = true; // three only projects a light map when shadows are on
-neon.shadow.mapSize.set(1024, 1024);
-neon.shadow.bias = -0.0004;
-neon.shadow.normalBias = 0.02;
+neon.shadow.mapSize.set(2048, 2048);
+neon.shadow.bias = -0.002;
+neon.shadow.normalBias = 0.08;
 neon.shadow.camera.near = 1;
 neon.shadow.camera.far = 20;
 scene.add(neon, neon.target);
