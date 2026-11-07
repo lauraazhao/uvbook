@@ -28,26 +28,37 @@ function measure(text, italic) {
   return measureCtx.measureText(text).width;
 }
 
-// How a printed line really bends on an open book: it stays straight across
-// the flat part of the page and only curves where the paper curves, rolling
-// down into the gutter at the spine. So on the left page a line runs level and
-// then dips at its end; on the right page it starts a little low by the spine,
-// climbs out of the gutter, then runs level with a faint fall at the outer edge.
-// Every line starts at the same x, so the left margin stays straight. Lines
-// near the top curve slightly more, where the paper lifts most.
-function linePath(side, base, bend) {
-  const [x0, x1] = COLUMN[side];
-  const w = x1 - x0;
-  const drop = 3.5 + 4.5 * bend;           // how far the line sinks into the gutter
-  const f = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
-  if (side === "left") {
-    return `M${f(x0, base)} L${f(x0 + 0.55 * w, base)} ` +
-      `C${f(x0 + 0.8 * w, base)} ${f(x1 - 0.04 * w, base + drop * 0.45)} ${f(x1, base + drop)} ` +
-      `L${f(x1 + 12, base + drop * 1.9)}`;
+// Every line follows the page's own surface: a scaled-down copy of the page's
+// top edge, which rises from the outer corner to a crest and rolls down into
+// the spine. The copy is shifted so it passes through the same point on the
+// left margin for every line, keeping that margin straight. Near the top the
+// line takes about 40% of the edge's curve; lower down it relaxes to ~12%,
+// as the paper flattens toward the bottom of the page.
+const edgeProbe = {};
+function edgeYAt(side, x) {
+  if (!edgeProbe[side]) {
+    const path = document.createElementNS(SVG_NS, "path");
+    const p = EDGE[side];
+    const f = ([px, py]) => `${px},${py}`;
+    path.setAttribute("d", `M${f(p[0])} C${f(p[1])} ${f(p[2])} ${f(p[3])} C${f(p[4])} ${f(p[5])} ${f(p[6])}`);
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("width", "0");
+    svg.setAttribute("height", "0");
+    svg.style.position = "absolute";
+    svg.append(path);
+    document.body.append(svg);
+    edgeProbe[side] = path;
   }
-  const edge = 1.2 * bend;                  // faint fall at the outer edge
-  return `M${f(x0, base + drop)} C${f(x0 + 0.06 * w, base + drop * 0.45)} ${f(x0 + 0.2 * w, base)} ${f(x0 + 0.42 * w, base)} ` +
-    `L${f(x0 + 0.7 * w, base)} Q${f(x0 + 0.9 * w, base)} ${f(x1, base + edge)} L${f(x1 + 12, base + edge * 1.6)}`;
+  const path = edgeProbe[side];
+  return path.getPointAtLength(offsetAtX(path, x)).y;
+}
+
+function linePath(side, base, bend) {
+  const k = bend;
+  const y0 = edgeYAt(side, COLUMN[side][0]);
+  const p = EDGE[side].map(([x, y]) => [x, base + k * (y - y0)]);
+  const f = ([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`;
+  return `M${f(p[0])} C${f(p[1])} ${f(p[2])} ${f(p[3])} C${f(p[4])} ${f(p[5])} ${f(p[6])}`;
 }
 
 // arc-length position on a path where it reaches a given x
@@ -103,7 +114,7 @@ function layoutPage(paper) {
       const base = FIRST_BASE + lineIndex * LINE_H;
       if (base > LAST_BASE) return;
       const t = (base - FIRST_BASE) / (LAST_BASE - FIRST_BASE);
-      const bend = 0.18 + 0.72 * Math.pow(1 - t, 1.2);
+      const bend = 0.12 + 0.28 * Math.pow(1 - t, 1.3);
 
       const path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("id", `ln-${uid}-${lineIndex}`);
