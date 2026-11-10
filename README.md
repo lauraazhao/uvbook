@@ -2,11 +2,27 @@
 
 A book on a black background lit by blacklight: the ink glows blue and the pages carry pink light from the spine and the edge.
 
-Open `index.html` in a browser (no build step). Click the right page to turn it; click the left page (or press the left arrow) to turn it back.
+Serve the folder (see Previewing below) and open `index.html`. Click the right page to turn it; click the left page (or press the left arrow) to turn it back.
 
 ## Adding and changing pages
 
-Everything in the book lives in one file: **`content/book.md`**. Edit it and the book updates; no code changes needed. Add as many pages as you like and the book turns through all of them.
+The pages are edited in the **"UV Book pages" Google Sheet**, in the *UV Book* folder on Google Drive. One row per page:
+
+| Page | Type | Text | Photo file name | Caption | Photo description |
+|---|---|---|---|---|---|
+| 124 | text | paragraphs, blank line between them, `*stars*` for italics | | | |
+| 125 | photo | | `beach.jpg` | the caption under the photo | what the photo shows, for screen readers |
+
+Photos go in the same Drive folder as the sheet; the file name in the row must match. Rows can be in any order (they are sorted by page number), and a skipped number becomes a blank page.
+
+**Syncing:** the sheet is copied into `content/book.md` and the test link is rebuilt by exporting it as CSV, copying the photos into `assets/`, and running
+
+```
+python3 tools/sheet_to_book.py pages.csv
+python3 tools/build_single_file.py
+```
+
+The book itself reads only `content/book.md`. Add as many pages as you like and the book turns through all of them.
 
 - A line with just `---` starts the next page. Pages alternate left, right, left, right, starting on a left page.
 - `start: 120` at the top sets the first page number; the rest count up from it.

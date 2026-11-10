@@ -1,6 +1,10 @@
 <!--
   THE BOOK'S CONTENTS
 
+  The pages are edited in the "UV Book pages" Google Sheet (in the UV Book
+  folder on Google Drive) and copied here by tools/sheet_to_book.py, so
+  change them in the sheet: edits made only here are replaced on the next sync.
+
   Pages go in reading order. A line with just three dashes (---) starts the
   next page. The first page is a left page, then they alternate left, right,
   left, right. Page numbers count up from `start`.
