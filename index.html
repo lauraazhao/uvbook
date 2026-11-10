@@ -22,31 +22,9 @@
     <p class="fallback" id="fallback" hidden>This page needs WebGL to draw the book. Try a current version of Chrome, Safari, Firefox or Edge.</p>
   </main>
 
-  <!-- The page text. It is drawn onto the 3D pages; this copy is for screen readers. -->
-  <div class="sr-only" id="pages">
-    <section data-page="120" data-side="left" aria-label="Page 120">
-      <p>the letters had been there all along, written in an ink nobody could see by daylight.</p>
-      <p>It was only when the lamp was switched on, a small violet tube that hummed like an insect against the dark, that the page began to answer. Words rose out of the paper the way breath shows on a cold window: faint at first, then certain, then bright enough to read.</p>
-      <p>She held the book closer. The margins blushed. Somewhere near the spine a warmth gathered, as if the binding remembered every hand that had pressed it open.</p>
-      <p>“Don’t move it,” he said. “It only works if the light finds it on its own.”</p>
-    </section>
-    <section data-page="121" data-side="right" data-hint="click to turn" aria-label="Page 121">
-      <p>Underneath the printed story ran another one, a second voice threaded between the lines.</p>
-      <p>Someone had annotated every page. Small, patient handwriting, glowing the cold blue of a gas flame: corrections, arguments, a recipe for plum cake, a list of names crossed out one by one until a single name remained.</p>
-      <p>“Who wrote this?”</p>
-      <p>He shrugged. “Whoever owned it before the library did. Turn the page. It gets stranger.”</p>
-    </section>
-    <section data-page="122" data-side="left" aria-label="Page 122" data-image="assets/strawberries.jpg" data-caption="enjoying the small things when travelling">
-      <img src="assets/strawberries.jpg" alt="A pack of Tochiotome strawberries resting on a lap on a train, over a grey plaid shirt, black velvet shorts and fluffy white leg warmers." />
-      <p>enjoying the small things when travelling</p>
-    </section>
-    <section data-page="123" data-side="right" aria-label="Page 123">
-      <p>And then, quite suddenly, the whole room seemed to be reading over their shoulders.</p>
-      <p>The walls had writing on them too. Not much: a date, a pair of initials, a small drawn star above the doorframe. Each one hung in the dark like something left on purpose for whoever came next.</p>
-      <p>She laughed, and the sound felt too loud. He switched the lamp off and the room went back to being a room.</p>
-      <p>When he switched it on again, the star was still there.</p>
-    </section>
-  </div>
+  <!-- The pages are written in content/book.md and drawn onto the 3D book.
+       main.js also copies them here as plain text for screen readers. -->
+  <div class="sr-only" id="pages"></div>
 
   <script type="module" src="main.js"></script>
 </body>

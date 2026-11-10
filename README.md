@@ -4,16 +4,31 @@ A book on a black background lit by blacklight: the ink glows blue and the pages
 
 Open `index.html` in a browser (no build step). Click the right page to turn it; click the left page (or press the left arrow) to turn it back.
 
-## Photo pages
+## Adding and changing pages
 
-Any page can be a photo page instead of text. Put the image in `assets/` and give the page's section a `data-image` and an optional `data-caption`:
+Everything in the book lives in one file: **`content/book.md`**. Edit it and the book updates; no code changes needed. Add as many pages as you like and the book turns through all of them.
 
-```html
-<section data-page="124" data-side="left" aria-label="Page 124"
-         data-image="assets/my-photo.jpg" data-caption="a short caption">
-  <img src="assets/my-photo.jpg" alt="Describe the photo for screen readers." />
-  <p>a short caption</p>
-</section>
+- A line with just `---` starts the next page. Pages alternate left, right, left, right, starting on a left page.
+- `start: 120` at the top sets the first page number; the rest count up from it.
+- **Text page:** paragraphs separated by a blank line. `*asterisks*` make italics.
+- **Photo page:** one line,
+
+  ```
+  ![caption under the photo](assets/my-photo.jpg "what the photo shows, for screen readers")
+  ```
+
+  Put the photo file in `assets/`. Any shape works: it is cropped from the centre to fill the frame. Every photo page uses the same frame (`PHOTO_FRAME` in `main.js`): a 3:4 window with a glowing ink border, bent along the page's curve, with the caption underneath.
+
+## Previewing
+
+The page loads `content/book.md`, so it needs a local web server rather than opening the file directly:
+
+```
+python3 -m http.server 8000
 ```
 
-Every photo page uses the same frame (`PHOTO_FRAME` in `main.js`): a 3:4 window with a glowing ink border, bent along the page's curve, with the caption underneath. Photos of any shape are cropped from the centre to fill the frame.
+then open http://localhost:8000.
+
+## Shareable single file
+
+`python3 tools/build_single_file.py` bundles the page, styles, script and contents into `dist/uv-book.html` and lists the photos it uses (it stops with an error if a photo is missing). Publish that file with the `assets/` photos next to it.

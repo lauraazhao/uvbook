@@ -26,6 +26,79 @@ const EDGE = {
 };
 
 // ---------------------------------------------------------------------------
+// Contents: every page is written in content/book.md (see the notes at the
+// top of that file). It is turned into one <section> per page inside #pages,
+// which screen readers read and the painter below draws onto the 3D pages.
+// ---------------------------------------------------------------------------
+async function loadBookSource() {
+  const inline = document.getElementById("book-content"); // single-file build
+  if (inline) return inline.textContent;
+  const res = await fetch("content/book.md");
+  if (!res.ok) throw new Error(`content/book.md: ${res.status}`);
+  return res.text();
+}
+
+function parseBook(src) {
+  src = src.replace(/<!--[\s\S]*?-->/g, "");
+  const chunks = src.split(/^\s*---\s*$/m);
+  const settings = { start: 1, hint: "" };
+  for (const line of chunks.shift().split("\n")) {
+    const m = line.match(/^\s*(\w+)\s*:\s*(.*?)\s*$/);
+    if (m) settings[m[1]] = m[2];
+  }
+  const pages = chunks.map((chunk) => {
+    const text = chunk.trim();
+    const photo = text.match(/^!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"([^"]*)")?\s*\)$/);
+    if (photo) return { image: photo[2], caption: photo[1].trim(), alt: (photo[3] || photo[1]).trim() };
+    return { paragraphs: text ? text.split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ").trim()) : [] };
+  });
+  return { start: parseInt(settings.start, 10) || 1, hint: settings.hint, pages };
+}
+
+function buildSections(book) {
+  const host = document.getElementById("pages");
+  host.textContent = "";
+  return book.pages.map((page, i) => {
+    const sec = document.createElement("section");
+    const num = String(book.start + i);
+    sec.dataset.page = num;
+    sec.dataset.side = i % 2 === 0 ? "left" : "right";
+    sec.setAttribute("aria-label", `Page ${num}`);
+    if (i === 1 && book.hint) sec.dataset.hint = book.hint;
+    if (page.image) {
+      sec.dataset.image = page.image;
+      sec.dataset.caption = page.caption;
+      const img = document.createElement("img");
+      img.alt = page.alt;
+      sec.append(img);
+      if (page.caption) {
+        const p = document.createElement("p");
+        p.textContent = page.caption;
+        sec.append(p);
+      }
+    } else {
+      for (const para of page.paragraphs) {
+        const p = document.createElement("p");
+        // *italics*
+        para.split(/(\*[^*]+\*)/).forEach((bit) => {
+          if (/^\*[^*]+\*$/.test(bit)) {
+            const em = document.createElement("em");
+            em.textContent = bit.slice(1, -1);
+            p.append(em);
+          } else if (bit) p.append(bit);
+        });
+        sec.append(p);
+      }
+    }
+    host.append(sec);
+    return sec;
+  });
+}
+
+const book = parseBook(await loadBookSource());
+const pageSections = buildSections(book);
+
+// ---------------------------------------------------------------------------
 // Typesetting: a justified block with straight left and right margins, like a
 // printed page. Each line bows gently with the page's curved top edge, but
 // only vertically: letters keep their place across the page and are sheared,
@@ -669,9 +742,9 @@ function depthMaterial(colorTex) {
   return new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: colorTex, alphaTest: 0.5 });
 }
 
-const sections = Object.fromEntries([...document.querySelectorAll("#pages section")].map((s) => [s.dataset.page, s]));
-const textures = {};
-for (const n of Object.keys(sections)) {
+// Page textures are painted on demand and kept in a small cache, so the book
+// can hold any number of pages without painting them all up front.
+function makePageTextures() {
   const color = new THREE.CanvasTexture(document.createElement("canvas"));
   const glow = new THREE.CanvasTexture(document.createElement("canvas"));
   for (const t of [color, glow]) {
@@ -679,17 +752,53 @@ for (const n of Object.keys(sections)) {
     t.flipY = false;
     t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   }
-  textures[n] = { color, glow };
+  return { color, glow };
 }
 
-function paintAll() {
-  for (const [n, section] of Object.entries(sections)) {
-    const { color, glow } = textures[n];
-    paintPage(section, color.image, glow.image);
-    color.needsUpdate = true;
-    glow.needsUpdate = true;
-  }
+function blankSection(side) {
+  const sec = document.createElement("section");
+  sec.dataset.side = side;
+  sec.dataset.page = "";
+  return sec;
 }
+const sideOf = (i) => (i % 2 === 0 ? "left" : "right");
+const sectionAt = (i) => pageSections[i] || blankSection(sideOf(i));
+
+function paintInto(tex, section) {
+  paintPage(section, tex.color.image, tex.glow.image);
+  tex.color.needsUpdate = true;
+  tex.glow.needsUpdate = true;
+}
+
+const CACHE_SIZE = 10;
+const texCache = new Map(); // page index (or blank) -> textures
+function pageTex(i) {
+  const key = pageSections[i] ? i : `blank-${sideOf(i)}`;
+  let tex = texCache.get(key);
+  if (tex) {
+    texCache.delete(key); // most recently used goes to the end
+  } else {
+    tex = makePageTextures();
+    paintInto(tex, sectionAt(i));
+  }
+  texCache.set(key, tex);
+  while (texCache.size > CACHE_SIZE) {
+    const [oldKey, old] = texCache.entries().next().value;
+    texCache.delete(oldKey);
+    old.color.dispose();
+    old.glow.dispose();
+  }
+  return tex;
+}
+
+// the cut-out shape every page casts in shadow (a right page's outline)
+const outlineTex = makePageTextures();
+
+function paintAll() {
+  for (const [key, tex] of texCache) paintInto(tex, typeof key === "number" ? pageSections[key] : blankSection(key.slice(6)));
+  paintInto(outlineTex, blankSection("right"));
+}
+paintInto(outlineTex, blankSection("right"));
 
 const mirrored = REST.map((a) => 180 - a);
 
@@ -698,11 +807,13 @@ const mirrored = REST.map((a) => 180 - a);
 // texture by which face is in view. The left page is built exactly like the
 // turning leaf lying at 180, so a page that has just been turned is lit and
 // shadowed exactly like the one it now covers, and nothing is ever swapped.
-function sheetMaterial(frontN, backN) {
-  const m = pageMaterial(textures[frontN].color, textures[frontN].glow, THREE.DoubleSide);
+function sheetMaterial() {
+  const blank = pageTex(-1);
+  const m = pageMaterial(blank.color, blank.glow, THREE.DoubleSide);
+  m.userData.back = { mapBack: { value: blank.color }, emissiveBack: { value: blank.glow } };
   m.onBeforeCompile = (shader) => {
-    shader.uniforms.mapBack = { value: textures[backN].color };
-    shader.uniforms.emissiveBack = { value: textures[backN].glow };
+    shader.uniforms.mapBack = m.userData.back.mapBack;
+    shader.uniforms.emissiveBack = m.userData.back.emissiveBack;
     shader.fragmentShader = shader.fragmentShader
       .replace("void main() {", "uniform sampler2D mapBack;\nuniform sampler2D emissiveBack;\nvoid main() {")
       .replace(
@@ -722,28 +833,40 @@ function sheetMaterial(frontN, backN) {
   };
   return m;
 }
-function makeSheetMesh(frontN, backN) {
-  const mesh = new THREE.Mesh(makeSheet(), sheetMaterial(frontN, backN));
+function makeSheetMesh() {
+  const mesh = new THREE.Mesh(makeSheet(), sheetMaterial());
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  // the shadow outline is a right page's (front, unflipped); 121 serves for all
-  mesh.customDepthMaterial = depthMaterial(textures[121].color);
+  mesh.customDepthMaterial = depthMaterial(outlineTex.color);
   scene.add(mesh);
   return mesh;
 }
+// put a page on each face of a sheet (the back face is the other side of the leaf)
+function setSheet(mesh, frontI, backI) {
+  const f = pageTex(frontI), b = pageTex(backI);
+  mesh.material.map = f.color;
+  mesh.material.emissiveMap = f.glow;
+  mesh.material.userData.back.mapBack.value = b.color;
+  mesh.material.userData.back.emissiveBack.value = b.glow;
+}
 
-// left page (back face 120 up), the page under the leaf (123), and the leaf
-const leftPage = makeSheetMesh(121, 120);
+// the left page (its back face up), the page under the leaf, and the leaf
+const leftPage = makeSheetMesh();
 shapeSheet(leftPage.geometry, mirrored, 0, false);
 const underGeo = makeSheet();
 shapeSheet(underGeo, REST, 0, false);
-const underPage = new THREE.Mesh(underGeo, pageMaterial(textures[123].color, textures[123].glow, THREE.DoubleSide));
+const underPage = new THREE.Mesh(underGeo, pageMaterial(outlineTex.color, outlineTex.glow, THREE.DoubleSide));
 underPage.receiveShadow = true;
 underPage.castShadow = true;
-underPage.customDepthMaterial = depthMaterial(textures[123].color);
+underPage.customDepthMaterial = depthMaterial(outlineTex.color);
 scene.add(underPage);
+function setUnder(i) {
+  const t = pageTex(i);
+  underPage.material.map = t.color;
+  underPage.material.emissiveMap = t.glow;
+}
 
-const leaf = makeSheetMesh(121, 122);
+const leaf = makeSheetMesh();
 const leafGeo = leaf.geometry;
 
 const LEAF_LIFT = 0.006;  // sits just above the page beneath it
@@ -790,15 +913,59 @@ function settlePose(t, target, dur) {
 }
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-let flipped = false;
+// Spread s shows pages 2s (left) and 2s+1 (right). Only one leaf ever moves:
+// before a turn it is dressed with the two sides of the page being turned,
+// the left page and the page underneath get whatever they need to show, and
+// after a forward turn the leaf simply stays lying on the left until the next
+// turn needs it again.
+const lastSpread = Math.max(0, Math.floor((pageSections.length - 1) / 2));
+let spread = 0;
+let leafOnLeft = false;
 let anim = null;
-poseLeaf(new Array(SEG).fill(0));
 
-function turn(toFlipped) {
-  if (anim || flipped === toFlipped) return;
-  flipped = toFlipped;
-  anim = { t0: performance.now(), dir: toFlipped ? 1 : -1, target: toFlipped ? 180 : 0 };
+function dress(s, onLeft) {
+  spread = s;
+  leafOnLeft = onLeft;
+  if (!onLeft) {
+    setSheet(leaf, 2 * s + 1, 2 * s + 2); // right page, and the left page behind it
+    setSheet(leftPage, 2 * s - 1, 2 * s);
+    setUnder(2 * s + 3);
+  } else {
+    setSheet(leaf, 2 * s - 1, 2 * s);
+    setSheet(leftPage, 2 * s - 3, 2 * s - 2);
+    setUnder(2 * s + 1);
+  }
+  poseLeaf(new Array(SEG).fill(onLeft ? 180 : 0));
+}
+dress(0, false);
 
+// paint the neighbouring pages while nothing is happening, so turning is instant
+function warmNeighbours() {
+  const idle = window.requestIdleCallback || ((f) => setTimeout(f, 200));
+  const want = [2 * spread - 2, 2 * spread - 1, 2 * spread + 2, 2 * spread + 3];
+  const next = () => {
+    const i = want.shift();
+    if (i === undefined || anim) return;
+    if (i >= 0 && i < pageSections.length) pageTex(i);
+    idle(next);
+  };
+  idle(next);
+}
+warmNeighbours();
+
+function turn(forward) {
+  if (anim) return;
+  if (forward) {
+    if (spread >= lastSpread) return;
+    if (leafOnLeft) dress(spread, false);
+    spread += 1;
+  } else {
+    if (spread <= 0) return;
+    if (!leafOnLeft) dress(spread, true);
+    spread -= 1;
+  }
+  leafOnLeft = forward;
+  anim = { t0: performance.now(), dir: forward ? 1 : -1, target: forward ? 180 : 0 };
 }
 
 function stepTurn(now) {
@@ -809,7 +976,7 @@ function stepTurn(now) {
   let pose;
   if (t < TURN) pose = turningPose(t / TURN, anim.dir);
   else if (t < TURN + SETTLE) pose = settlePose(t - TURN, anim.target, SETTLE);
-  else { pose = new Array(SEG).fill(anim.target); anim = null; }
+  else { pose = new Array(SEG).fill(anim.target); anim = null; warmNeighbours(); }
   poseLeaf(pose);
 }
 
@@ -1007,4 +1174,4 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, poseLeaf, turningPose, scene, camera, textures, debug, wingMat };
+window.__uvbook = { turn, pageTex, get spread() { return spread; }, poseLeaf, turningPose, scene, camera, debug, wingMat };
