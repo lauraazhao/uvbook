@@ -240,6 +240,16 @@ function grainPattern(ctx) {
   return ctx.createPattern(grain, "repeat");
 }
 
+// The photo-page component. Any page section with data-image (and an optional
+// data-caption) is drawn with this frame instead of text, so every photo page
+// matches: same size and place, same glowing border and gap, same caption.
+const PHOTO_FRAME = {
+  inset: 12,     // extra margin inside the text column on each side
+  top: 60,       // top of the photo, in page units
+  aspect: 3 / 4, // width / height of the window; photos are cropped to fit
+  mat: 7,        // gap between the photo and its glowing border
+};
+
 // Photo pages: the picture fills most of the page inside a border drawn in the
 // same glowing ink as the text, with a caption underneath.
 const photos = {};
@@ -270,7 +280,11 @@ function warpPhoto(img, side, x, y, w, h, bend) {
   const src = document.createElement("canvas");
   src.width = W; src.height = H;
   const sctx = src.getContext("2d");
-  sctx.drawImage(img, 0, 0, W, H);
+  // crop the photo to the frame's shape, keeping its centre
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  let cw = iw, ch = iw / (w / h);
+  if (ch > ih) { ch = ih; cw = ih * (w / h); }
+  sctx.drawImage(img, (iw - cw) / 2, (ih - ch) / 2, cw, ch, 0, 0, W, H);
   const sd = sctx.getImageData(0, 0, W, H).data;
   const out = document.createElement("canvas");
   out.width = W; out.height = H + extra;
@@ -305,11 +319,11 @@ function paintPhoto(c, g, section) {
   const side = section.dataset.side;
   const [colStart, colEnd] = COLUMN[side];
   const img = photoFor(section.dataset.image);
-  const top = 46, maxW = colEnd - colStart, maxH = 322;
-  const aspect = img.naturalWidth ? img.naturalWidth / img.naturalHeight : 0.75;
-  let w = maxW, h = w / aspect;
-  if (h > maxH) { h = maxH; w = h * aspect; }
-  const x = (colStart + colEnd) / 2 - w / 2, y = top;
+  // every photo page uses the same frame: a 3:4 window inset from the text
+  // column, and the photo is cropped to fill it (like object-fit: cover)
+  const w = colEnd - colStart - PHOTO_FRAME.inset * 2;
+  const h = w / PHOTO_FRAME.aspect;
+  const x = colStart + PHOTO_FRAME.inset, y = PHOTO_FRAME.top;
   // the photo's top edge runs parallel to the page's curved top edge, and the
   // bend eases off down the picture until it matches the text's gentle bow
   const photoBend = (py) => {
@@ -332,7 +346,7 @@ function paintPhoto(c, g, section) {
 
   // border: the same ink as the text, bent along the same curve, with a soft
   // bloom on the glow map
-  const pad = 3.5;
+  const pad = PHOTO_FRAME.mat;
   const bx0 = x - pad, by0 = y - pad, bx1 = x + w + pad, by1 = y + h + pad;
   const border = new Path2D();
   const step = 2;
