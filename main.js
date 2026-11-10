@@ -114,6 +114,18 @@ function readWords(p) {
 
 const fontFor = (italic) => `${italic ? "italic " : ""}500 ${FONT_SIZE}px ${FONT_STACK}`;
 
+// the curve is strongest near the top and relaxes down the page
+function bendAt(y) {
+  const t = Math.min(1, (y - FIRST_BASE) / (LAST_BASE - FIRST_BASE));
+  return 0.06 + 0.16 * Math.pow(Math.max(0, 1 - t), 1.3);
+}
+
+// how far a point on a flat page drops to follow the page's bow (the same
+// vertical-only offset the text lines get, so edges stay straight)
+function warpDY(side, x, y) {
+  return bendAt(y) * (edgeYAt(side, x) - edgeYAt(side, COLUMN[side][0]));
+}
+
 // lay out a page into positioned lines (shared by the colour and glow passes)
 function layout(ctx, section) {
   const side = section.dataset.side;
@@ -132,9 +144,7 @@ function layout(ctx, section) {
       const base = FIRST_BASE + lineIndex * LINE_H;
       if (base > LAST_BASE) return lines;
       // the curve is strongest near the top and relaxes down the page
-      const t = (base - FIRST_BASE) / (LAST_BASE - FIRST_BASE);
-      const bend = 0.06 + 0.16 * Math.pow(1 - t, 1.3);
-      const poly = linePoly(side, base, bend);
+      const poly = linePoly(side, base, bendAt(base));
       const indent = first && pi > 0 ? INDENT : 0;
       // positions are measured straight across the page (x), not along the curve
       const start = colStart + indent;
@@ -244,6 +254,52 @@ function photoFor(src) {
   return photos[src];
 }
 
+const warpCache = new Map();
+function warpPhoto(img, side, x, y, w, h) {
+  const key = `${img.src}|${side}|${x}|${y}|${w}|${h}`;
+  if (warpCache.has(key)) return warpCache.get(key);
+  const S = TEX_SCALE;
+  const W = Math.round(w * S), H = Math.round(h * S);
+  let lo = 0, hi = 0;
+  for (const px of [x, x + w / 2, x + w]) for (const py of [y, y + h]) {
+    const d = warpDY(side, px, py);
+    lo = Math.min(lo, d); hi = Math.max(hi, d);
+  }
+  const top = Math.floor(lo * S) - 2, extra = Math.ceil((hi - lo) * S) + 4;
+  const src = document.createElement("canvas");
+  src.width = W; src.height = H;
+  const sctx = src.getContext("2d");
+  sctx.drawImage(img, 0, 0, W, H);
+  const sd = sctx.getImageData(0, 0, W, H).data;
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H + extra;
+  const octx = out.getContext("2d");
+  const od = octx.createImageData(W, H + extra);
+  const x0 = edgeYAt(side, COLUMN[side][0]);
+  const bends = new Float32Array(H + extra);
+  for (let j = 0; j < H + extra; j++) bends[j] = bendAt(y + (j + top) / S) * S;
+  for (let i = 0; i < W; i++) {
+    const e = edgeYAt(side, x + (i + 0.5) / S) - x0; // warpDY = bend(y) * e
+    for (let j = 0; j < H + extra; j++) {
+      const sy = (j + top) - bends[j] * e; // source row (fractional)
+      const s0 = Math.floor(sy), f = sy - s0;
+      if (s0 < -1 || s0 >= H) continue;
+      const o = (j * W + i) * 4;
+      const a = s0 >= 0 ? (s0 * W + i) * 4 : -1;
+      const b = s0 + 1 < H ? ((s0 + 1) * W + i) * 4 : -1;
+      for (let k = 0; k < 4; k++) {
+        const va = a >= 0 ? sd[a + k] : 0, vb = b >= 0 ? sd[b + k] : 0;
+        const wa = a >= 0 ? 1 - f : 0, wb = b >= 0 ? f : 0;
+        od.data[o + k] = k === 3 ? 255 * (wa + wb) : (va * wa + vb * wb) / (wa + wb || 1);
+      }
+    }
+  }
+  octx.putImageData(od, 0, 0);
+  const result = { canvas: out, x, y: y + top / S, w, h: (H + extra) / S };
+  warpCache.set(key, result);
+  return result;
+}
+
 function paintPhoto(c, g, section) {
   const side = section.dataset.side;
   const [colStart, colEnd] = COLUMN[side];
@@ -255,17 +311,31 @@ function paintPhoto(c, g, section) {
   const x = (colStart + colEnd) / 2 - w / 2, y = top;
 
   if (img.complete && img.naturalWidth) {
-    c.drawImage(img, x, y, w, h);
-    // under the lamp a photo glows only faintly; keep a dim copy in the glow so
-    // it still reads where the light falls away
-    g.save();
-    g.globalAlpha = 0.22;
-    g.drawImage(img, x, y, w, h);
-    g.restore();
+    // resample the photo pixel by pixel, shifting each one down by the page's
+    // bow at its spot, so the picture bends with the paper like the text does
+    const warped = warpPhoto(img, side, x, y, w, h);
+    for (const [ctx, alpha] of [[c, 1], [g, 0.22]]) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(warped.canvas, warped.x, warped.y, warped.w, warped.h);
+      ctx.restore();
+    }
   }
 
-  // border: the same ink as the text, with a soft bloom on the glow map
+  // border: the same ink as the text, bent along the same curve, with a soft
+  // bloom on the glow map
   const pad = 3.5;
+  const bx0 = x - pad, by0 = y - pad, bx1 = x + w + pad, by1 = y + h + pad;
+  const border = new Path2D();
+  const step = 2;
+  const pt = (px, py) => [px, py + warpDY(side, px, py)];
+  const pts = [];
+  for (let px = bx0; px < bx1; px += step) pts.push(pt(px, by0));
+  for (let py = by0; py < by1; py += step) pts.push(pt(bx1, py));
+  for (let px = bx1; px > bx0; px -= step) pts.push(pt(px, by1));
+  for (let py = by1; py > by0; py -= step) pts.push(pt(bx0, py));
+  pts.forEach(([px, py], k) => (k ? border.lineTo(px, py) : border.moveTo(px, py)));
+  border.closePath();
   for (const [ctx, stroke, lw, blur] of [
     [g, "rgba(150, 140, 255, 0.6)", 3.2, 2.5],
     [c, "#f4f0ff", 1.3, 0],
@@ -276,21 +346,23 @@ function paintPhoto(c, g, section) {
     ctx.lineWidth = lw;
     ctx.lineJoin = "round";
     ctx.filter = blur ? `blur(${blur}px)` : "none";
-    ctx.strokeRect(x - pad, y - pad, w + pad * 2, h + pad * 2);
+    ctx.stroke(border);
     ctx.restore();
   }
 
+  // caption: set like a line of text, so it bows the same way
   const caption = section.dataset.caption;
   if (caption) {
-    for (const [ctx, fill] of [[c, "#f4f0ff"], [g, "rgb(150, 140, 255)"]]) {
-      ctx.save();
-      ctx.font = `italic 500 ${FONT_SIZE * 1.1}px ${FONT_STACK}`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = fill;
-      ctx.fillText(caption, (colStart + colEnd) / 2, y + h + pad + 26);
-      ctx.restore();
-    }
+    const base = by1 + 24;
+    c.font = fontFor(true);
+    const space = c.measureText(" ").width;
+    const words = caption.split(/\s+/).map((wd) => ({ w: wd, italic: true, width: c.measureText(wd).width }));
+    const total = words.reduce((sum, wd) => sum + wd.width, 0) + space * (words.length - 1);
+    let at = (colStart + colEnd) / 2 - total / 2;
+    const placed = words.map((wd) => { const o = { ...wd, at }; at += wd.width + space; return o; });
+    const lines = [{ poly: linePoly(side, base, bendAt(base)), words: placed }];
+    drawLines(c, lines, "#f4f0ff");
+    drawLines(g, lines, "rgb(150, 140, 255)");
   }
 }
 
