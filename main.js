@@ -230,6 +230,70 @@ function grainPattern(ctx) {
   return ctx.createPattern(grain, "repeat");
 }
 
+// Photo pages: the picture fills most of the page inside a border drawn in the
+// same glowing ink as the text, with a caption underneath.
+const photos = {};
+function photoFor(src) {
+  if (!photos[src]) {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => paintAll();
+    img.src = src;
+    photos[src] = img;
+  }
+  return photos[src];
+}
+
+function paintPhoto(c, g, section) {
+  const side = section.dataset.side;
+  const [colStart, colEnd] = COLUMN[side];
+  const img = photoFor(section.dataset.image);
+  const top = 46, maxW = colEnd - colStart, maxH = 322;
+  const aspect = img.naturalWidth ? img.naturalWidth / img.naturalHeight : 0.75;
+  let w = maxW, h = w / aspect;
+  if (h > maxH) { h = maxH; w = h * aspect; }
+  const x = (colStart + colEnd) / 2 - w / 2, y = top;
+
+  if (img.complete && img.naturalWidth) {
+    c.drawImage(img, x, y, w, h);
+    // under the lamp a photo glows only faintly; keep a dim copy in the glow so
+    // it still reads where the light falls away
+    g.save();
+    g.globalAlpha = 0.22;
+    g.drawImage(img, x, y, w, h);
+    g.restore();
+  }
+
+  // border: the same ink as the text, with a soft bloom on the glow map
+  const pad = 3.5;
+  for (const [ctx, stroke, lw, blur] of [
+    [g, "rgba(150, 140, 255, 0.6)", 3.2, 2.5],
+    [c, "#f4f0ff", 1.3, 0],
+    [g, "rgb(150, 140, 255)", 1.3, 0],
+  ]) {
+    ctx.save();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lw;
+    ctx.lineJoin = "round";
+    ctx.filter = blur ? `blur(${blur}px)` : "none";
+    ctx.strokeRect(x - pad, y - pad, w + pad * 2, h + pad * 2);
+    ctx.restore();
+  }
+
+  const caption = section.dataset.caption;
+  if (caption) {
+    for (const [ctx, fill] of [[c, "#f4f0ff"], [g, "rgb(150, 140, 255)"]]) {
+      ctx.save();
+      ctx.font = `italic 500 ${FONT_SIZE * 1.1}px ${FONT_STACK}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = fill;
+      ctx.fillText(caption, (colStart + colEnd) / 2, y + h + pad + 26);
+      ctx.restore();
+    }
+  }
+}
+
 // Paint one page into two textures:
 //  colour: the paper and the ink as they reflect the room's light
 //  glow:   what the page gives off on its own under UV (the fluorescent ink,
@@ -265,7 +329,8 @@ function paintPage(section, colorCanvas, glowCanvas) {
   }
 
   for (const ctx of [c, g]) ctx.setTransform(TEX_SCALE, 0, 0, TEX_SCALE, 0, 0);
-  const lines = layout(c, section);
+  if (section.dataset.image) paintPhoto(c, g, section);
+  const lines = section.dataset.image ? [] : layout(c, section);
 
   // highlighter fluoresces violet
   drawMarks(c, lines, "rgba(150, 120, 255, 0.35)", 10, 1.5);
