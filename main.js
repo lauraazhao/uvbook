@@ -255,14 +255,15 @@ function photoFor(src) {
 }
 
 const warpCache = new Map();
-function warpPhoto(img, side, x, y, w, h) {
+function warpPhoto(img, side, x, y, w, h, bend) {
   const key = `${img.src}|${side}|${x}|${y}|${w}|${h}`;
+  const dyAt = (px, py) => bend(py) * (edgeYAt(side, px) - edgeYAt(side, COLUMN[side][0]));
   if (warpCache.has(key)) return warpCache.get(key);
   const S = TEX_SCALE;
   const W = Math.round(w * S), H = Math.round(h * S);
   let lo = 0, hi = 0;
   for (const px of [x, x + w / 2, x + w]) for (const py of [y, y + h]) {
-    const d = warpDY(side, px, py);
+    const d = dyAt(px, py);
     lo = Math.min(lo, d); hi = Math.max(hi, d);
   }
   const top = Math.floor(lo * S) - 2, extra = Math.ceil((hi - lo) * S) + 4;
@@ -277,7 +278,7 @@ function warpPhoto(img, side, x, y, w, h) {
   const od = octx.createImageData(W, H + extra);
   const x0 = edgeYAt(side, COLUMN[side][0]);
   const bends = new Float32Array(H + extra);
-  for (let j = 0; j < H + extra; j++) bends[j] = bendAt(y + (j + top) / S) * S;
+  for (let j = 0; j < H + extra; j++) bends[j] = bend(y + (j + top) / S) * S;
   for (let i = 0; i < W; i++) {
     const e = edgeYAt(side, x + (i + 0.5) / S) - x0; // warpDY = bend(y) * e
     for (let j = 0; j < H + extra; j++) {
@@ -309,11 +310,18 @@ function paintPhoto(c, g, section) {
   let w = maxW, h = w / aspect;
   if (h > maxH) { h = maxH; w = h * aspect; }
   const x = (colStart + colEnd) / 2 - w / 2, y = top;
+  // the photo's top edge runs parallel to the page's curved top edge, and the
+  // bend eases off down the picture until it matches the text's gentle bow
+  const photoBend = (py) => {
+    const f = Math.min(1, Math.max(0, (py - y) / h));
+    const b = bendAt(py);
+    return b + (1 - b) * Math.pow(1 - f, 1.6);
+  };
 
   if (img.complete && img.naturalWidth) {
     // resample the photo pixel by pixel, shifting each one down by the page's
     // bow at its spot, so the picture bends with the paper like the text does
-    const warped = warpPhoto(img, side, x, y, w, h);
+    const warped = warpPhoto(img, side, x, y, w, h, photoBend);
     for (const [ctx, alpha] of [[c, 1], [g, 0.22]]) {
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -328,7 +336,7 @@ function paintPhoto(c, g, section) {
   const bx0 = x - pad, by0 = y - pad, bx1 = x + w + pad, by1 = y + h + pad;
   const border = new Path2D();
   const step = 2;
-  const pt = (px, py) => [px, py + warpDY(side, px, py)];
+  const pt = (px, py) => [px, py + photoBend(py) * (edgeYAt(side, px) - edgeYAt(side, colStart))];
   const pts = [];
   for (let px = bx0; px < bx1; px += step) pts.push(pt(px, by0));
   for (let py = by0; py < by1; py += step) pts.push(pt(bx1, py));
