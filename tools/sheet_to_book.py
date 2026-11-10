@@ -42,7 +42,8 @@ def main(csv_path):
         n = int(num)
         if n in pages:
             sys.exit(f"Page {n} appears twice in the sheet")
-        kind = cell(row, 1).lower() or ("photo" if cell(row, 3) else "text")
+        # a photo file name makes it a photo page, whatever the Type says
+        kind = "photo" if cell(row, 3) else (cell(row, 1).lower() or "text")
         if kind == "photo":
             photo = cell(row, 3)
             if not photo:

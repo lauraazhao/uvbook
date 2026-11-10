@@ -26,23 +26,13 @@ hint: click to turn
 
 ---
 
-the letters had been there all along, written in an ink nobody could see by daylight.
+Thanks for stopping by! I'm Laura :)
 
-It was only when the lamp was switched on, a small violet tube that hummed like an insect against the dark, that the page began to answer. Words rose out of the paper the way breath shows on a cold window: faint at first, then certain, then bright enough to read.
-
-She held the book closer. The margins blushed. Somewhere near the spine a warmth gathered, as if the binding remembered every hand that had pressed it open.
-
-“Don’t move it,” he said. “It only works if the light finds it on its own.”
+I studied Computer Science and Business at Western University + Ivey Business School. Since graduating last October '25, I've been working with various startups to design end-to-end experiences.
 
 ---
 
-Underneath the printed story ran another one, a second voice threaded between the lines.
-
-Someone had annotated every page. Small, patient handwriting, glowing the cold blue of a gas flame: corrections, arguments, a recipe for plum cake, a list of names crossed out one by one until a single name remained.
-
-“Who wrote this?”
-
-He shrugged. “Whoever owned it before the library did. Turn the page. It gets stranger.”
+![](assets/me.jpg)
 
 ---
 
@@ -50,10 +40,4 @@ He shrugged. “Whoever owned it before the library did. Turn the page. It gets 
 
 ---
 
-And then, quite suddenly, the whole room seemed to be reading over their shoulders.
-
-The walls had writing on them too. Not much: a date, a pair of initials, a small drawn star above the doorframe. Each one hung in the dark like something left on purpose for whoever came next.
-
-She laughed, and the sound felt too loud. He switched the lamp off and the room went back to being a room.
-
-When he switched it on again, the star was still there.
+![being encompassed by mountains makes me feel alive](assets/hiking.jpg "being encompassed by mountains makes me feel alive")
