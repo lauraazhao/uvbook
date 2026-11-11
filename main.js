@@ -591,7 +591,7 @@ scene.add(sticker);
 // ---------------------------------------------------------------------------
 const LAMP = new THREE.Vector3(-11.5, 1.5, 0.35);
 
-const core = new THREE.SpotLight(0xffbe3a, 980, 0, 0.7, 0.9, 2);
+const core = new THREE.SpotLight(0xffbe3a, 882, 0, 0.7, 0.9, 2);
 core.position.set(LAMP.x + 0.9, 0.85, LAMP.z);
 core.target.position.set(-0.5, 0, 0.2);
 core.castShadow = true;
