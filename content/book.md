@@ -41,3 +41,11 @@ I studied Computer Science and Business at Western University + Ivey Business Sc
 ---
 
 ![being encompassed by mountains makes me feel alive](assets/hiking.jpg "being encompassed by mountains makes me feel alive")
+
+---
+
+![matcha connoisseur](assets/matcha.jpg "matcha connoisseur")
+
+---
+
+![a fan of exploration and new experiences](assets/angelslanding.jpg "a fan of exploration and new experiences")
