@@ -64,7 +64,6 @@ function buildSections(book) {
     sec.dataset.page = num;
     sec.dataset.side = i % 2 === 0 ? "left" : "right";
     sec.setAttribute("aria-label", `Page ${num}`);
-    if (i === 1 && book.hint) sec.dataset.hint = book.hint;
     if (page.image) {
       sec.dataset.image = page.image;
       sec.dataset.caption = page.caption;
@@ -97,6 +96,12 @@ function buildSections(book) {
 
 const book = parseBook(await loadBookSource());
 const pageSections = buildSections(book);
+
+// the "click to turn" hint sits on the screen below the book, not on a page;
+// it fades out once the reader has turned a page
+const hintEl = document.getElementById("turn-hint");
+if (book.hint) hintEl.textContent = book.hint;
+else hintEl.hidden = true;
 
 // ---------------------------------------------------------------------------
 // Typesetting: a justified block with straight left and right margins, like a
@@ -1019,6 +1024,7 @@ function turn(forward) {
     spread -= 1;
   }
   leafOnLeft = forward;
+  hintEl.classList.add("done");
   anim = { t0: performance.now(), dir: forward ? 1 : -1, target: forward ? 180 : 0 };
 }
 
