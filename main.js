@@ -667,7 +667,7 @@ const LAMP_THEMES = [
     // a deep orange glow below, ringed in gold on a warm orange wall
     id: "sunset",
     name: "Sunset",
-    power: 0.72, // its pale horizon is far brighter than the prism's purples
+    power: 0.98, // its pale horizon is brighter than the prism's purples
     swatch: "linear-gradient(#7a48d8, #4f74e0 30%, #6fd0e0 50%, #fff0c0 66%, #ff9a2a 82%, #ff6a10)",
     paint: paintRings([
       [0.0, "#5a30c0"], [0.18, "#7a48d8"], [0.32, "#4f74e0"], [0.44, "#6fd0e0"], [0.53, "#ffdcaa"],
@@ -681,7 +681,7 @@ const LAMP_THEMES = [
     // orange rim that turns lime green along the bottom, on a dark wall
     id: "aura",
     name: "Aura",
-    power: 0.68,
+    power: 0.95,
     swatch: "linear-gradient(#ff6ac8, #cfa0dc 35%, #a8c4ec 60%, #70eaff 80%, #7aff4a 92%, #ff8a3a)",
     paint: paintRings([
       [0.0, "#ff4aa8"], [0.16, "#ff6ac8"], [0.3, "#cfa0dc"], [0.42, "#a8c4ec"], [0.54, "#70eaff"], [0.62, "#60f0e0"],
