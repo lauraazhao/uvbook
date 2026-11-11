@@ -725,8 +725,34 @@ function shapeSheet(geo, angles, lift, uFlip) {
   geo.computeBoundingSphere();
 }
 
+// Where the warm lamp light is brightest the near-white paper and ink wash
+// out together, so the ink switches to fluorescing blue there: the stronger
+// the glare on a spot, the more its ink turns a deep, glowing blue that stands
+// out against the bright paper. The ink is found from the glow map, where it
+// is the only strongly blue thing on the page.
+const INK_GLARE = {
+  litFrom: 0.3, litTo: 1.0, // reflected brightness where the effect starts / is full
+  blue: "vec3(0.03, 0.10, 0.80)",
+};
+function addInkGlare(shader) {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    "#include <opaque_fragment>",
+    `#ifdef USE_EMISSIVEMAP
+    {
+      float ink = smoothstep(0.12, 0.6, emissiveColor.b);
+      vec3 refl = totalDiffuse + totalSpecular;
+      float lit = dot(refl, vec3(0.2126, 0.7152, 0.0722));
+      float glare = smoothstep(${INK_GLARE.litFrom.toFixed(3)}, ${INK_GLARE.litTo.toFixed(3)}, lit);
+      vec3 blueInk = ${INK_GLARE.blue} * (0.45 + 0.2 * lit);
+      outgoingLight = mix(outgoingLight, blueInk, ink * glare);
+    }
+    #endif
+    #include <opaque_fragment>`
+  );
+}
+
 function pageMaterial(colorTex, glowTex, side) {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     map: colorTex,
     emissiveMap: glowTex,
     emissive: 0xffffff,
@@ -736,6 +762,8 @@ function pageMaterial(colorTex, glowTex, side) {
     alphaTest: 0.5,
     side,
   });
+  m.onBeforeCompile = addInkGlare;
+  return m;
 }
 
 function depthMaterial(colorTex) {
@@ -830,6 +858,7 @@ function sheetMaterial() {
           : texture2D( emissiveBack, vec2( 1.0 - vEmissiveMapUv.x, vEmissiveMapUv.y ) );
         totalEmissiveRadiance *= emissiveColor.rgb;`
       );
+    addInkGlare(shader);
   };
   return m;
 }
