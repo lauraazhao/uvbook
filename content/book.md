@@ -32,7 +32,7 @@ I studied Computer Science and Business at Western University + Ivey Business Sc
 
 ---
 
-![](assets/me.jpg)
+![it's me!](assets/me.jpg "it's me!")
 
 ---
 
