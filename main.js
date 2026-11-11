@@ -668,12 +668,13 @@ const LAMP_THEMES = [
     id: "sunset",
     name: "Sunset",
     power: 0.98, // its pale horizon is brighter than the prism's purples
-    swatch: "linear-gradient(#7a48d8, #4f74e0 30%, #6fd0e0 50%, #fff0c0 66%, #ff9a2a 82%, #ff6a10)",
+    swatch: "radial-gradient(circle, #ffe0b0 0 20%, #ffa040 45%, #ff6a10 70%, #ffcc4a 82%, #b03806)",
+    lamp: { orange: 0xff7a10, magenta: 0xff3c14 },
     paint: paintRings([
-      [0.0, "#5a30c0"], [0.18, "#7a48d8"], [0.32, "#4f74e0"], [0.44, "#6fd0e0"], [0.53, "#ffdcaa"],
-      [0.6, "#ffb04a"], [0.66, "#ff7a18"],
-      // the golden rim, then the warm orange wash on the wall
-      [0.69, "#ffd060"], [0.712, "#ffe28a"], [0.735, "#ff9a20"], [0.78, "#a83c08"], [0.86, "#3a1404"], [0.94, "#120600"], [1.0, "#000000"],
+      // all warm: a pale peach sun, deepening through amber and orange to a
+      // gold rim and an ember-red glow
+      [0.0, "#ffd9a8"], [0.2, "#ffc27a"], [0.36, "#ffa040"], [0.5, "#ff8420"], [0.6, "#ff6a10"],
+      [0.66, "#ff8a1a"], [0.69, "#ffcc4a"], [0.712, "#ffe07a"], [0.735, "#ff9a20"], [0.78, "#b03806"], [0.86, "#3e1002"], [0.94, "#120400"], [1.0, "#000000"],
     ]),
   },
   {
@@ -682,11 +683,13 @@ const LAMP_THEMES = [
     id: "aura",
     name: "Aura",
     power: 0.95,
-    swatch: "linear-gradient(#ff6ac8, #cfa0dc 35%, #a8c4ec 60%, #70eaff 80%, #7aff4a 92%, #ff8a3a)",
+    swatch: "radial-gradient(circle, #ff4ab0 0 20%, #d890e8 42%, #78d8ff 64%, #c8fbff 80%, #c060d8)",
+    lamp: { orange: 0xff5ab4, magenta: 0x9a6aff },
     paint: paintRings([
-      [0.0, "#ff4aa8"], [0.16, "#ff6ac8"], [0.3, "#cfa0dc"], [0.42, "#a8c4ec"], [0.54, "#70eaff"], [0.62, "#60f0e0"],
-      // lime green turning to orange at the rim, then a red-orange glow
-      [0.67, "#6aff5a"], [0.7, "#c8ff40"], [0.725, "#ffb030"], [0.75, "#ff6a20"], [0.8, "#6a1a08"], [0.88, "#140404"], [1.0, "#000000"],
+      // all cool: hot pink melting through lilac into icy cyan, a bright
+      // aqua rim, then a soft pink glow
+      [0.0, "#ff3aa8"], [0.18, "#ff5cc4"], [0.32, "#d890e8"], [0.44, "#a8b4f4"], [0.55, "#78d8ff"], [0.63, "#5aeaff"],
+      [0.68, "#8af4ff"], [0.705, "#c8fbff"], [0.73, "#7ae0ff"], [0.76, "#c060d8"], [0.8, "#4a1440"], [0.88, "#120412"], [1.0, "#000000"],
     ]),
   },
 ];
@@ -1236,6 +1239,9 @@ function setLamp(id, remember = true) {
   lampId = theme.id;
   neon.map = lampMap(theme);
   neon.intensity = NEON_POWER * (theme.power || 1);
+  // the warm lamp on the left picks up the palette too
+  orange.color.setHex(theme.lamp?.orange ?? 0xff6418);
+  magenta.color.setHex(theme.lamp?.magenta ?? 0xff2a8c);
   host.dataset.lamp = theme.id;
   for (const btn of lampPicker.children) {
     const on = btn.dataset.lamp === theme.id;
