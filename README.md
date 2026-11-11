@@ -48,3 +48,7 @@ then open http://localhost:8000.
 ## Shareable single file
 
 `python3 tools/build_single_file.py` bundles the page, styles, script and contents into `dist/uv-book.html` and lists the photos it uses (it stops with an error if a photo is missing). Publish that file with the `assets/` photos next to it.
+
+## Lamp colours
+
+The round swatches in the bottom-right corner switch the neon lamp between three palettes: **Prism**, **Sunset** and **Aura**. The choice is remembered in the browser. To open the page with a particular lamp (for example in a Framer embed), add it to the address: `?lamp=sunset` or `?lamp=aura`. Palettes are defined in `LAMP_THEMES` in `main.js`.

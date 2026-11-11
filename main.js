@@ -620,33 +620,84 @@ scene.add(rim);
 // fading to yellow-green, then thin blue rings, then on through the rest of
 // the spectrum before it fades out.
 const NEON = new THREE.Vector3(-6.2, 6.0, 5.4);
-function neonRings() {
+// The neon lamp can be switched between palettes (see the lamp switcher).
+// Each paints the disc of light the lamp projects onto the book and table.
+function lampCanvas(paint) {
   const c = document.createElement("canvas");
   c.width = c.height = 512;
   const g = c.getContext("2d");
   g.fillStyle = "#000";
   g.fillRect(0, 0, 512, 512);
-  const r = g.createRadialGradient(256, 256, 0, 256, 256, 256);
-  [
-    [0.0, "#9a00ff"], [0.16, "#b800ff"], [0.3, "#f01ee0"], [0.42, "#ff2a9a"],
-    [0.53, "#ffb04a"], [0.61, "#e2ff4a"], [0.66, "#8cff6a"],
-    // tight outer rings: baby-blue bands, then a thin run through the rest
-    // of the spectrum, then dark
-    [0.675, "#6cc8ff"], [0.688, "#b8e8ff"], [0.701, "#6cc8ff"], [0.716, "#b796ff"], [0.737, "#ff5cb4"], [0.75, "#ffa45e"],
-    [0.77, "#4a1a4e"], [0.8, "#000000"], [1.0, "#000000"],
-  ].forEach(([o, col]) => r.addColorStop(o, col));
-  g.fillStyle = r;
-  g.beginPath();
-  g.arc(256, 256, 256, 0, Math.PI * 2);
-  g.fill();
+  paint(g);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-const neon = new THREE.SpotLight(0xffffff, 820, 0, 1.12, 0.05, 2);
+
+// Each palette is a set of rings from the centre of the lamp outwards. The
+// lamp sits just off the bottom-left of the view, so the book catches the
+// outer bands: the middle of the palette and the rim.
+function paintRings(stops) {
+  return (g) => {
+    const r = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+    stops.forEach(([o, col]) => r.addColorStop(o, col));
+    g.fillStyle = r;
+    g.beginPath();
+    g.arc(256, 256, 256, 0, Math.PI * 2);
+    g.fill();
+  };
+}
+
+const LAMP_THEMES = [
+  {
+    id: "prism",
+    name: "Prism",
+    swatch: "radial-gradient(circle, #b800ff 0 30%, #ff2a9a 45%, #ffb04a 60%, #8cff6a 70%, #6cc8ff 78%, #ff5cb4 86%, #1a0a20 100%)",
+    paint: paintRings([
+      [0.0, "#9a00ff"], [0.16, "#b800ff"], [0.3, "#f01ee0"], [0.42, "#ff2a9a"],
+      [0.53, "#ffb04a"], [0.61, "#e2ff4a"], [0.66, "#8cff6a"],
+      // tight outer rings: baby-blue bands, then a thin run through the rest
+      // of the spectrum, then dark
+      [0.675, "#6cc8ff"], [0.688, "#b8e8ff"], [0.701, "#6cc8ff"], [0.716, "#b796ff"], [0.737, "#ff5cb4"], [0.75, "#ffa45e"],
+      [0.77, "#4a1a4e"], [0.8, "#000000"], [1.0, "#000000"],
+    ]),
+  },
+  {
+    // a classic sunset lamp: violet sky over blue and cyan, a pale horizon,
+    // a deep orange glow below, ringed in gold on a warm orange wall
+    id: "sunset",
+    name: "Sunset",
+    power: 0.72, // its pale horizon is far brighter than the prism's purples
+    swatch: "linear-gradient(#7a48d8, #4f74e0 30%, #6fd0e0 50%, #fff0c0 66%, #ff9a2a 82%, #ff6a10)",
+    paint: paintRings([
+      [0.0, "#5a30c0"], [0.18, "#7a48d8"], [0.32, "#4f74e0"], [0.44, "#6fd0e0"], [0.53, "#ffdcaa"],
+      [0.6, "#ffb04a"], [0.66, "#ff7a18"],
+      // the golden rim, then the warm orange wash on the wall
+      [0.69, "#ffd060"], [0.712, "#ffe28a"], [0.735, "#ff9a20"], [0.78, "#a83c08"], [0.86, "#3a1404"], [0.94, "#120600"], [1.0, "#000000"],
+    ]),
+  },
+  {
+    // a soft aura: pink at the top melting through lilac to cyan, with an
+    // orange rim that turns lime green along the bottom, on a dark wall
+    id: "aura",
+    name: "Aura",
+    power: 0.68,
+    swatch: "linear-gradient(#ff6ac8, #cfa0dc 35%, #a8c4ec 60%, #70eaff 80%, #7aff4a 92%, #ff8a3a)",
+    paint: paintRings([
+      [0.0, "#ff4aa8"], [0.16, "#ff6ac8"], [0.3, "#cfa0dc"], [0.42, "#a8c4ec"], [0.54, "#70eaff"], [0.62, "#60f0e0"],
+      // lime green turning to orange at the rim, then a red-orange glow
+      [0.67, "#6aff5a"], [0.7, "#c8ff40"], [0.725, "#ffb030"], [0.75, "#ff6a20"], [0.8, "#6a1a08"], [0.88, "#140404"], [1.0, "#000000"],
+    ]),
+  },
+];
+const lampMaps = {};
+const lampMap = (theme) => (lampMaps[theme.id] ||= lampCanvas(theme.paint));
+
+const NEON_POWER = 820;
+const neon = new THREE.SpotLight(0xffffff, NEON_POWER, 0, 1.12, 0.05, 2);
 neon.position.copy(NEON);
 neon.target.position.set(-5.9, 0, 4.9);
-neon.map = neonRings();
+neon.map = lampMap(LAMP_THEMES[0]);
 neon.castShadow = true; // three only projects a light map when shadows are on
 neon.shadow.mapSize.set(2048, 2048);
 neon.shadow.bias = -0.002;
@@ -1174,4 +1225,52 @@ Promise.all([
   document.fonts.load(fontFor(true)),
 ]).then(() => document.fonts.ready).then(paintAll, () => {});
 
-window.__uvbook = { turn, pageTex, get spread() { return spread; }, poseLeaf, turningPose, scene, camera, debug, wingMat };
+// ---------------------------------------------------------------------------
+// Lamp switcher: round swatches in the corner pick the neon lamp's palette.
+// The choice can also come from the address (?lamp=sunset) and is remembered.
+// ---------------------------------------------------------------------------
+const lampPicker = document.getElementById("lamps");
+let lampId = LAMP_THEMES[0].id;
+function setLamp(id, remember = true) {
+  const theme = LAMP_THEMES.find((t) => t.id === id) || LAMP_THEMES[0];
+  lampId = theme.id;
+  neon.map = lampMap(theme);
+  neon.intensity = NEON_POWER * (theme.power || 1);
+  host.dataset.lamp = theme.id;
+  for (const btn of lampPicker.children) {
+    const on = btn.dataset.lamp === theme.id;
+    btn.setAttribute("aria-checked", String(on));
+    btn.tabIndex = on ? 0 : -1;
+  }
+  if (remember) try { localStorage.setItem("uvbook-lamp", theme.id); } catch (e) {}
+}
+for (const theme of LAMP_THEMES) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "lamp";
+  btn.dataset.lamp = theme.id;
+  btn.setAttribute("role", "radio");
+  btn.setAttribute("aria-label", `${theme.name} lamp`);
+  btn.title = theme.name;
+  btn.style.background = theme.swatch;
+  btn.addEventListener("click", () => setLamp(theme.id));
+  lampPicker.append(btn);
+}
+lampPicker.addEventListener("keydown", (e) => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  e.stopPropagation(); // don't turn the page
+  const i = LAMP_THEMES.findIndex((t) => t.id === lampId);
+  const next = LAMP_THEMES[(i + step + LAMP_THEMES.length) % LAMP_THEMES.length];
+  setLamp(next.id);
+  lampPicker.querySelector(`[data-lamp="${next.id}"]`).focus();
+});
+{
+  let saved = null;
+  try { saved = localStorage.getItem("uvbook-lamp"); } catch (e) {}
+  const fromUrl = new URLSearchParams(location.search).get("lamp");
+  setLamp(fromUrl || saved || LAMP_THEMES[0].id, false);
+}
+
+window.__uvbook = { setLamp,  turn, pageTex, get spread() { return spread; }, poseLeaf, turningPose, scene, camera, debug, wingMat };
